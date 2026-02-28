@@ -61,8 +61,13 @@ function updateRateLimit(info) {
   if (!rateLimitEl || !info) return;
   const r = info.remaining;
   if (r === undefined || r === null) return;
-  rateLimitEl.className = r < 10 ? 'rate-limit low' : 'rate-limit ok';
-  rateLimitEl.textContent = `API: ${r} calls left`;
+  if (r < 10) {
+    rateLimitEl.className = 'rate-limit low';
+    rateLimitEl.innerHTML = `⚠️ API: ${r} calls left. <a href="#" onclick="switchTab('settings')" style="color:inherit;text-decoration:underline">Add Key</a>`;
+  } else {
+    rateLimitEl.className = 'rate-limit ok';
+    rateLimitEl.textContent = `API: ${r} calls left`;
+  }
 }
 
 // ── Theme System ─────────────────────────────────────────────────────────────
@@ -277,8 +282,8 @@ function friendlyError(err) {
   if (!err) return 'Please try again.';
   const lower = err.toLowerCase();
   if (lower.includes('timeout') || lower.includes('timed out')) return 'Request timed out. Please try again.';
-  if (lower.includes('rate limit') || lower.includes('429')) return 'Rate limit reached. Please wait a moment.';
-  if (lower.includes('authentication') || lower.includes('401')) return 'API key issue. Check Settings.';
+  if (lower.includes('rate limit') || lower.includes('429')) return '<strong>API Rate Limit Reached!</strong><br><br>GG.deals limits anonymous requests. To fix this instantly, go to the <strong><span style="cursor:pointer;text-decoration:underline" onclick="switchTab(\'settings\')">Settings tab</span></strong> and add your own free API key.';
+  if (lower.includes('authentication') || lower.includes('401')) return 'Invalid API key. Check Settings.';
   if (lower.includes('not found') || lower.includes('404')) return 'Game not found on GG.deals.';
   return 'Please try again.';
 }
@@ -486,7 +491,7 @@ function showDashboard() {
         : `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${g.id}/header.jpg`;
 
       html += `<div class="dashboard-mini-card" data-action="searchGame" data-id="${g.id}">
-        <img class="dashboard-mini-img" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(g.title)}">
+        <img class="dashboard-mini-img" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(g.title)}" onerror="this.src='images/icon-128.png'">
         <div class="dashboard-mini-info">
           <div class="dashboard-mini-title">${escapeHtml(g.title)}</div>
           <div class="dashboard-mini-prices">
@@ -693,7 +698,7 @@ function renderGameCard(id, game) {
 
   return `<div class="game-card" data-game-id="${id}">
     <div class="game-card-body">
-      <img class="game-card-img" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(game.title || '')}">
+      <img class="game-card-img" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(game.title || '')}" onerror="this.src='images/icon-128.png'">
       <div class="game-card-content">
         <div class="game-title-row">
           <div class="game-title">${escapeHtml(game.title || 'Unknown')}</div>
@@ -804,11 +809,19 @@ function loadActiveBundles() {
 
       const imgSrc = (b.image) ? b.image : 'images/icon-128.png';
 
+      let storeLogoHtml = '';
+      if (b.shop) {
+        // Attempt to create a sleek store logo based on the shop name. Most key shops use their name as their .com domain.
+        // E.g., Fanatical -> fanatical.com 
+        const domain = b.shop.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+        storeLogoHtml = `<img class="active-bundle-store-logo" src="https://icon.horse/icon/${domain}" title="${escapeHtml(b.shop)}" onerror="this.style.display='none'">`;
+      }
+
       h += `<div class="active-bundle-card">
         <div class="active-bundle-body">
-          <img class="active-bundle-img" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(b.title)}">
+          <img class="active-bundle-img" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(b.title)}" onerror="this.src='images/icon-128.png'">
           <div class="active-bundle-content">
-            <div class="active-bundle-header"><div class="active-bundle-title">${escapeHtml(b.title)}</div>${b.shop ? `<div class="active-bundle-store">${escapeHtml(b.shop)}</div>` : ''}</div>
+            <div class="active-bundle-header"><div class="active-bundle-title">${escapeHtml(b.title)}</div>${storeLogoHtml}</div>
             <div class="active-bundle-tiers">`;
 
       if (b.tiers) for (const t of b.tiers) h += `<div class="bundle-tier"><span class="bundle-price">${t.price} ${t.currency}</span> · ${t.gamesCount || '?'} game${(t.gamesCount || 0) > 1 ? 's' : ''}</div>`;
@@ -867,7 +880,7 @@ function displayWishlist() {
 
     html += `<div class="wishlist-item" data-wl-id="${item.id}">
       <div class="wishlist-header" data-wl-expand="${item.id}">
-        <img class="wishlist-img" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(item.title)}">
+        <img class="wishlist-img" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(item.title)}" onerror="this.src='images/icon-128.png'">
         <div class="wishlist-header-info">
           <div class="wishlist-title">${escapeHtml(item.title)}</div>
           <div class="wishlist-meta"><span>Added ${dateStr}</span>${item.addedPrice != null ? `<span>at <span class="price-at">${item.addedPrice}</span></span>` : ''}</div>
