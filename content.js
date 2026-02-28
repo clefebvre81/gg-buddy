@@ -369,24 +369,21 @@
   // ── Green Man Gaming ───────────────────────────────────────────────────────
 
   function detectGMGGames() {
-    const path = window.location.pathname;
-    const titles = [];
+    // Rely on Universal Detector for GMG since they use standard meta/h1 tags efficiently
+    const result = detectUniversalGame();
+    if (result) {
+      result.store = 'www.greenmangaming.com';
+      return result;
+    }
 
+    // Fallback if the universal missed the metadata but we have a url slug
+    const path = window.location.pathname;
     const gameMatch = path.match(/\/games\/([^/?#]+)/);
     if (gameMatch) {
       const titleFromSlug = slugToTitle(gameMatch[1]);
-      if (titleFromSlug) titles.push(titleFromSlug);
+      if (titleFromSlug) return { type: 'titles', titles: [titleFromSlug], store: 'www.greenmangaming.com' };
     }
-
-    const docTitle = document.title?.split('|')[0]?.split(' - ')[0]?.trim();
-    if (docTitle && docTitle.length > 1 && !titles.includes(docTitle)) {
-      titles.push(docTitle);
-    }
-
-    if (titles.length > 0) {
-      return { type: 'titles', titles: titles.slice(0, 5), store: 'www.greenmangaming.com' };
-    }
-    return detectGenericTitles('www.greenmangaming.com');
+    return null;
   }
 
   // ── CDKeys ──────────────────────────────────────────────────────────────────

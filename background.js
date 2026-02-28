@@ -183,14 +183,10 @@ chrome.contextMenus.onClicked.addListener((info) => {
   if (info.menuItemId === 'searchPrice') {
     const text = (info.selectionText || '').trim();
     if (!text) return;
-    if (/^\d+$/.test(text)) {
-      chrome.storage.local.set({ contextMenuAppId: text });
-    } else {
-      resolveTitlesToSteamIds([text]).then((mapping) => {
-        const id = mapping[text];
-        if (id) chrome.storage.local.set({ contextMenuAppId: id });
-      }).catch(() => { /* silently fail */ });
-    }
+
+    // Open a new tab querying GG.deals search directly with the highlighted text
+    const searchUrl = `https://gg.deals/games/?title=${encodeURIComponent(text)}`;
+    chrome.tabs.create({ url: searchUrl });
   }
 });
 
