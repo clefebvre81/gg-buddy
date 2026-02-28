@@ -819,8 +819,15 @@ function loadActiveBundles() {
         shopName = b.title.split(' ')[0];
       }
 
-      // Convert shop name to a domain (e.g. "Humble Bundle" -> humblebundle.com)
-      const domain = shopName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+      // Map common store keywords to their actual domains for accurate favicon fetching
+      let domain = shopName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+      const s = shopName.toLowerCase();
+      if (s.includes('humble')) domain = 'humblebundle.com';
+      else if (s.includes('fanatical')) domain = 'fanatical.com';
+      else if (s.includes('indiegala')) domain = 'indiegala.com';
+      else if (s.includes('steam')) domain = 'steampowered.com';
+      else if (s.includes('epic')) domain = 'epicgames.com';
+      else if (s.includes('gog')) domain = 'gog.com';
       const storeLogoUrl = `https://icon.horse/icon/${domain}`;
 
       // Use the crisp store logo as the main image
