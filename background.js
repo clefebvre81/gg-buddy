@@ -18,7 +18,7 @@ let activeBundlesCache = { data: null, timestamp: 0 };
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'searchPrice',
-    title: 'Look up game price on GG.deals',
+    title: chrome.i18n.getMessage('contextMenuLookup') || 'Look up game price on GG.deals',
     contexts: ['selection'],
   });
 });
@@ -57,13 +57,13 @@ async function fetchWithRetry(url, retries = MAX_RETRIES) {
         continue;
       }
       if (resp.status === 401 || resp.status === 403) {
-        throw new Error(`API authentication error (${resp.status}). Check your API key.`);
+        throw new Error(chrome.i18n.getMessage('errorAuth', [String(resp.status)]) || `API authentication error (${resp.status}). Check your API key.`);
       }
       if (resp.status === 404) {
-        throw new Error(`Resource not found (404).`);
+        throw new Error(chrome.i18n.getMessage('errorNotFoundCode') || 'Resource not found (404).');
       }
       if (resp.status >= 500) {
-        lastError = new Error(`Server error (${resp.status})`);
+        lastError = new Error(chrome.i18n.getMessage('errorServer', [String(resp.status)]) || `Server error (${resp.status})`);
         await delay(getBackoffMs(attempt));
         continue;
       }
@@ -76,7 +76,7 @@ async function fetchWithRetry(url, retries = MAX_RETRIES) {
     } catch (e) {
       clearTimeout(timeoutId);
       if (e.name === 'AbortError') {
-        lastError = new Error('Request timed out');
+        lastError = new Error(chrome.i18n.getMessage('errorRequestTimedOut') || 'Request timed out');
       } else if (e.message.includes('authentication') || e.message.includes('not found')) {
         throw e;
       } else {
@@ -88,7 +88,7 @@ async function fetchWithRetry(url, retries = MAX_RETRIES) {
     }
   }
 
-  throw lastError || new Error('Request failed after retries');
+  throw lastError || new Error(chrome.i18n.getMessage('errorRequestFailed') || 'Request failed after retries');
 }
 
 function trackRateLimit(resp) {
@@ -213,6 +213,7 @@ async function handleDetectedGames(data, tabId) {
   detectedGamesPerTab[tabId] = {
     appIds,
     store: data.store || 'unknown',
+    pageType: data.pageType || null,
     timestamp: Date.now(),
   };
 
@@ -224,9 +225,9 @@ async function handleDetectedGames(data, tabId) {
 function handleGetDetected(tabId, sendResponse) {
   const entry = detectedGamesPerTab[tabId];
   if (entry && Date.now() - entry.timestamp < 10 * 60 * 1000) {
-    sendResponse({ appIds: entry.appIds, store: entry.store });
+    sendResponse({ appIds: entry.appIds, store: entry.store, pageType: entry.pageType || null });
   } else {
-    sendResponse({ appIds: [], store: null });
+    sendResponse({ appIds: [], store: null, pageType: null });
   }
 }
 
@@ -469,9 +470,10 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 async function checkWishlistPrices() {
   try {
-    const result = await chrome.storage.local.get(['wishlist', 'notificationSettings']);
+    const result = await chrome.storage.local.get(['wishlist', 'notificationSettings', 'lastRegion']);
     const wishlist = result.wishlist || [];
     const settings = result.notificationSettings || { enabled: false };
+    const region = result.lastRegion || 'us';
 
     if (!settings.enabled) return;
 
@@ -479,7 +481,7 @@ async function checkWishlistPrices() {
     if (alertItems.length === 0) return;
 
     const ids = alertItems.map((w) => w.id);
-    const prices = await fetchPricesBatch(ids, 'us');
+    const prices = await fetchPricesBatch(ids, region);
 
     for (const item of alertItems) {
       const game = prices[item.id];
@@ -495,8 +497,8 @@ async function checkWishlistPrices() {
         chrome.notifications.create(`price-drop-${item.id}-${Date.now()}`, {
           type: 'basic',
           iconUrl: 'images/icon-128.png',
-          title: `Price Drop: ${game.title}`,
-          message: `Now ${price} ${game.prices.currency} (Alert: ${item.alertThreshold})`,
+          title: chrome.i18n.getMessage('notifPriceDrop', [game.title]) || `Price Drop: ${game.title}`,
+          message: chrome.i18n.getMessage('notifPriceDropBody', [String(price), game.prices.currency, String(item.alertThreshold)]) || `Now ${price} ${game.prices.currency} (Alert: ${item.alertThreshold})`,
         });
       }
     }

@@ -10,1536 +10,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700;900&family=Lato:wght@400;700;900&display=swap"
     rel="stylesheet">
-  <style>
-    /* ═══════════════════════════════════════════════════════
-       GG.deals Design System — Multi-Theme
-       ═══════════════════════════════════════════════════════ */
-
-    /* ── Light theme (default) ─────────────────────────────── */
-    :root {
-      --gg-bg: #ebebef;
-      --gg-card: #ffffff;
-      --gg-header: #1a1a1a;
-      --gg-text: #1f1c22;
-      --gg-text-sec: #70657b;
-      --gg-text-muted: #9e95a7;
-      --gg-border: #e2e2e7;
-      --gg-hover: #f8f8fa;
-      --gg-green: #048044;
-      --gg-green-bg: #d4edda;
-      --gg-green-80: rgba(4, 128, 68, 0.8);
-      --gg-gold: #f9c41a;
-      --gg-red: #dc3545;
-      --gg-orange: #e67e22;
-      --gg-shadow: rgba(12, 12, 13, 0.06) 0px 4px 8px;
-      --gg-radius: 6px;
-      --gg-accent: #007bff;
-      --gg-accent-hover: #0069d9;
-      --gg-accent-bg: rgba(0, 123, 255, 0.08);
-      --gg-price-bg: #f8f8fa;
-      --gg-hist-bg: #f2f9f4;
-      --gg-hist-border: #d4edda;
-      --gg-input-bg: #ffffff;
-    }
-
-    /* ── Dark theme ────────────────────────────────────────── */
-    body.theme-dark {
-      --gg-bg: #1a1a2e;
-      --gg-card: #22223a;
-      --gg-header: #0f0f1a;
-      --gg-text: #e8e6ef;
-      --gg-text-sec: #a09bb0;
-      --gg-text-muted: #6e6880;
-      --gg-border: #33334a;
-      --gg-hover: #2a2a42;
-      --gg-shadow: rgba(0, 0, 0, 0.25) 0px 4px 12px;
-      --gg-accent-bg: rgba(0, 123, 255, 0.15);
-      --gg-price-bg: #2a2a42;
-      --gg-hist-bg: #1a2e22;
-      --gg-hist-border: #254a32;
-      --gg-input-bg: #2a2a42;
-      --gg-green-bg: #1a3328;
-    }
-
-    /* ── OLED Black theme ──────────────────────────────────── */
-    body.theme-oled {
-      --gg-bg: #000000;
-      --gg-card: #0d0d0d;
-      --gg-header: #000000;
-      --gg-text: #f0f0f0;
-      --gg-text-sec: #999;
-      --gg-text-muted: #666;
-      --gg-border: #1a1a1a;
-      --gg-hover: #141414;
-      --gg-shadow: none;
-      --gg-accent-bg: rgba(0, 123, 255, 0.12);
-      --gg-price-bg: #111;
-      --gg-hist-bg: #0a1a0f;
-      --gg-hist-border: #1a3322;
-      --gg-input-bg: #141414;
-      --gg-green-bg: #0a1a0f;
-    }
-
-    /* ── Accent Colors ─────────────────────────────────────── */
-    body.accent-green {
-      --gg-accent: #048044;
-      --gg-accent-hover: #036a38;
-      --gg-accent-bg: rgba(4, 128, 68, 0.1);
-    }
-
-    body.accent-purple {
-      --gg-accent: #7c3aed;
-      --gg-accent-hover: #6d28d9;
-      --gg-accent-bg: rgba(124, 58, 237, 0.1);
-    }
-
-    body.accent-red {
-      --gg-accent: #dc3545;
-      --gg-accent-hover: #c82333;
-      --gg-accent-bg: rgba(220, 53, 69, 0.1);
-    }
-
-    body.accent-orange {
-      --gg-accent: #e67e22;
-      --gg-accent-hover: #d35400;
-      --gg-accent-bg: rgba(230, 126, 34, 0.1);
-    }
-
-    body.accent-pink {
-      --gg-accent: #ec4899;
-      --gg-accent-hover: #db2777;
-      --gg-accent-bg: rgba(236, 72, 153, 0.1);
-    }
-
-    body.accent-cyan {
-      --gg-accent: #06b6d4;
-      --gg-accent-hover: #0891b2;
-      --gg-accent-bg: rgba(6, 182, 212, 0.1);
-    }
-
-    /* ── Compact Mode ──────────────────────────────────────── */
-    body.compact .game-card,
-    body.compact .wishlist-item,
-    body.compact .active-bundle-card {
-      padding: 8px 10px;
-      margin-bottom: 5px;
-    }
-
-    body.compact .game-title {
-      font-size: 0.82rem;
-    }
-
-    body.compact .price-section {
-      padding: 6px 8px;
-      gap: 12px;
-    }
-
-    body.compact .price-col-value {
-      font-size: 0.95rem;
-    }
-
-    body.compact .content {
-      padding: 8px 8px 4px;
-    }
-
-    body.compact .tabs {
-      padding: 0 4px;
-    }
-
-    body.compact .tab-btn {
-      padding: 7px 4px 5px;
-      font-size: 0.7rem;
-    }
-
-    /* ── Reset & Base ──────────────────────────────────────── */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Lato', sans-serif;
-      background: var(--gg-bg);
-      color: var(--gg-text);
-      width: 520px;
-      min-height: 200px;
-      overflow: hidden;
-      font-size: 14px;
-      line-height: 1.4;
-      transition: background 0.3s, color 0.3s;
-    }
-
-    /* ── Header ────────────────────────────────────────────── */
-    .header {
-      background: var(--gg-header);
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .header-logo {
-      font-family: 'Chakra Petch', sans-serif;
-      font-size: 1.55rem;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: 0.5px;
-      display: flex;
-      align-items: center;
-      line-height: 1;
-      margin-top: 2px;
-    }
-
-    .logo-dot {
-      display: inline-flex;
-      position: relative;
-      width: 14px;
-      height: 14px;
-      margin: 0 4px 0 3px;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .logo-red,
-    .logo-blue {
-      position: absolute;
-      width: 8px;
-      height: 8px;
-      transform: rotate(45deg);
-    }
-
-    .logo-red {
-      background-color: #f73650;
-      left: 0;
-      z-index: 1;
-      mix-blend-mode: screen;
-    }
-
-    .logo-blue {
-      background-color: #3861fb;
-      right: 0;
-      z-index: 2;
-      mix-blend-mode: screen;
-    }
-
-    .header-sep {
-      width: 1px;
-      height: 20px;
-      background: rgba(255, 255, 255, 0.15);
-    }
-
-    .header-title {
-      font-size: 0.82rem;
-      color: rgba(255, 255, 255, 0.7);
-      font-weight: 400;
-    }
-
-    .scan-badge {
-      background: var(--gg-green);
-      color: #fff;
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 12px;
-      white-space: nowrap;
-      transition: all 0.3s;
-    }
-
-    .scan-badge.empty {
-      background: #6c757d;
-    }
-
-    /* ── Tabs ───────────────────────────────────────────────── */
-    .tabs {
-      display: flex;
-      background: var(--gg-card);
-      border-bottom: 1px solid var(--gg-border);
-      padding: 0 8px;
-      transition: background 0.3s;
-    }
-
-    .tab-btn {
-      flex: 1;
-      padding: 10px 6px 8px;
-      background: none;
-      border: none;
-      border-bottom: 2.5px solid transparent;
-      color: var(--gg-text-sec);
-      cursor: pointer;
-      font-size: 0.72rem;
-      font-weight: 700;
-      font-family: 'Lato', sans-serif;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-    }
-
-    .tab-btn .tab-icon {
-      font-size: 0.85rem;
-    }
-
-    .tab-btn.active {
-      color: var(--gg-accent);
-      border-bottom-color: var(--gg-accent);
-    }
-
-    .tab-btn:hover:not(.active) {
-      color: var(--gg-text);
-    }
-
-    /* ── Content ───────────────────────────────────────────── */
-    .content {
-      padding: 12px 12px 8px;
-      max-height: 540px;
-      overflow-y: auto;
-      background: var(--gg-bg);
-      transition: background 0.3s;
-    }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-      animation: tabFadeIn 0.2s ease-out;
-    }
-
-    @keyframes tabFadeIn {
-      from {
-        opacity: 0;
-      }
-
-      to {
-        opacity: 1;
-      }
-    }
-
-    /* ── Inputs ─────────────────────────────────────────────── */
-    .search-box {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    input[type="text"],
-    select {
-      flex: 1;
-      padding: 8px 12px;
-      background: var(--gg-input-bg);
-      border: 1px solid var(--gg-border);
-      border-radius: var(--gg-radius);
-      color: var(--gg-text);
-      font-size: 0.85rem;
-      font-family: 'Lato', sans-serif;
-      transition: border-color 0.2s, background 0.3s;
-    }
-
-    input[type="text"]::placeholder {
-      color: var(--gg-text-muted);
-    }
-
-    input[type="text"]:focus,
-    select:focus {
-      outline: none;
-      border-color: var(--gg-accent);
-      box-shadow: 0 0 0 2px var(--gg-accent-bg);
-    }
-
-    select option {
-      background: var(--gg-card);
-      color: var(--gg-text);
-    }
-
-    /* ── Buttons ────────────────────────────────────────────── */
-    button {
-      padding: 8px 14px;
-      background: var(--gg-accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--gg-radius);
-      cursor: pointer;
-      font-weight: 700;
-      font-size: 0.82rem;
-      font-family: 'Lato', sans-serif;
-      transition: all 0.2s;
-    }
-
-    button:hover {
-      background: var(--gg-accent-hover);
-    }
-
-    button:active {
-      transform: scale(0.97);
-    }
-
-    button:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    .btn-outline {
-      background: transparent;
-      border: 1px solid var(--gg-border);
-      color: var(--gg-text);
-    }
-
-    .btn-outline:hover {
-      background: var(--gg-hover);
-      border-color: var(--gg-text-muted);
-    }
-
-    .btn-sm {
-      padding: 4px 10px;
-      font-size: 0.72rem;
-      border-radius: 4px;
-    }
-
-    .btn-danger {
-      background: var(--gg-red);
-    }
-
-    .btn-danger:hover {
-      background: #c82333;
-    }
-
-    .btn-green {
-      background: var(--gg-green);
-    }
-
-    .btn-green:hover {
-      background: #036a38;
-    }
-
-    /* ── Game cards ─────────────────────────────────────────── */
-    .game-card {
-      background: var(--gg-card);
-      border: 1px solid var(--gg-border);
-      border-radius: var(--gg-radius);
-      padding: 14px;
-      margin-bottom: 8px;
-      box-shadow: var(--gg-shadow);
-      transition: box-shadow 0.2s, background 0.3s;
-      position: relative;
-    }
-
-    .game-card-body {
-      display: flex;
-      gap: 14px;
-    }
-
-    .game-card-img {
-      width: 100px;
-      height: 100px;
-      border-radius: 6px;
-      object-fit: cover;
-      background: var(--gg-bg);
-      flex-shrink: 0;
-    }
-
-    .game-card-content {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .game-card:hover {
-      box-shadow: rgba(12, 12, 13, 0.12) 0px 6px 16px;
-    }
-
-    .game-card:last-child {
-      margin-bottom: 0;
-    }
-
-    .game-title-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .game-title {
-      color: var(--gg-text);
-      font-weight: 700;
-      font-size: 0.95rem;
-      word-break: break-word;
-      flex: 1;
-    }
-
-    /* ── Deal Score badge ──────────────────────────────────── */
-    .deal-score {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 900;
-      font-size: 1rem;
-      flex-shrink: 0;
-      position: relative;
-      border: 4px solid;
-      background: var(--gg-card);
-    }
-
-    .deal-score.score-wait {
-      border-color: var(--gg-red);
-      color: var(--gg-red);
-    }
-
-    .deal-score.score-ok {
-      border-color: var(--gg-gold);
-      color: #b8860b;
-    }
-
-    .deal-score.score-good {
-      border-color: var(--gg-green);
-      color: var(--gg-green);
-    }
-
-    .deal-score.score-amazing {
-      border-color: #7c3aed;
-      color: #7c3aed;
-    }
-
-    /* Used in larger layouts (like search results or main card) */
-    .deal-score-label {
-      font-size: 0.55rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      position: absolute;
-      bottom: -14px;
-      white-space: nowrap;
-      font-weight: 700;
-      color: var(--gg-text-sec);
-    }
-
-    /* ── Price display ─────────────────────────────────────── */
-    .price-section {
-      display: flex;
-      gap: 20px;
-      margin-bottom: 10px;
-      padding: 10px 12px;
-      background: var(--gg-price-bg);
-      border-radius: 4px;
-      transition: background 0.3s;
-    }
-
-    .price-col {
-      flex: 1;
-    }
-
-    .price-col-label {
-      font-size: 0.7rem;
-      color: var(--gg-text-muted);
-      margin-bottom: 2px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      font-weight: 700;
-    }
-
-    .price-col-value {
-      font-size: 1.15rem;
-      font-weight: 900;
-      color: var(--gg-text);
-    }
-
-    .price-col-value.na {
-      color: var(--gg-text-muted);
-      font-size: 0.85rem;
-      font-weight: 400;
-    }
-
-    .discount-badge {
-      display: inline-block;
-      background: var(--gg-green-80);
-      color: #fff;
-      padding: 1px 6px;
-      border-radius: 3px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      margin-left: 4px;
-      vertical-align: middle;
-    }
-
-    .best-deal-tag {
-      display: inline-block;
-      background: var(--gg-gold);
-      color: #000;
-      padding: 1px 6px;
-      border-radius: 3px;
-      font-size: 0.65rem;
-      font-weight: 900;
-      margin-left: 3px;
-      vertical-align: middle;
-      text-transform: uppercase;
-    }
-
-    .historical-low-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      background: var(--gg-green-bg);
-      color: var(--gg-green);
-      padding: 2px 8px;
-      border-radius: 3px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      margin-top: 4px;
-    }
-
-    .historical-row {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 8px;
-      padding: 6px 12px;
-      background: var(--gg-hist-bg);
-      border-radius: 4px;
-      border: 1px solid var(--gg-hist-border);
-    }
-
-    .hist-col {
-      flex: 1;
-    }
-
-    .hist-label {
-      font-size: 0.65rem;
-      color: var(--gg-green);
-      text-transform: uppercase;
-      font-weight: 700;
-    }
-
-    .hist-value {
-      font-size: 0.88rem;
-      font-weight: 700;
-      color: var(--gg-green);
-    }
-
-    .hist-value.na {
-      color: var(--gg-text-muted);
-      font-weight: 400;
-    }
-
-    .game-actions {
-      display: flex;
-      gap: 6px;
-      margin-top: 10px;
-      align-items: center;
-    }
-
-    .game-link {
-      color: var(--gg-accent);
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-decoration: none;
-      margin-left: auto;
-    }
-
-    .game-link:hover {
-      color: var(--gg-accent-hover);
-      text-decoration: underline;
-    }
-
-    /* ── Bundles ────────────────────────────────────────────── */
-    .bundle-card {
-      background: var(--gg-card);
-      border: 1px solid var(--gg-border);
-      border-radius: var(--gg-radius);
-      padding: 10px 12px;
-      margin-top: 8px;
-    }
-
-    .bundle-title {
-      color: var(--gg-text);
-      font-weight: 700;
-      font-size: 0.85rem;
-      margin-bottom: 4px;
-    }
-
-    .bundle-tier {
-      font-size: 0.78rem;
-      color: var(--gg-text-sec);
-      padding: 2px 0;
-    }
-
-    .bundle-price {
-      color: var(--gg-green);
-      font-weight: 700;
-    }
-
-    .bundle-expiry {
-      font-size: 0.68rem;
-      color: var(--gg-orange);
-      font-weight: 700;
-      margin-top: 2px;
-    }
-
-    .active-bundle-card {
-      background: var(--gg-card);
-      border: 1px solid var(--gg-border);
-      border-radius: var(--gg-radius);
-      padding: 12px;
-      margin-bottom: 8px;
-      box-shadow: var(--gg-shadow);
-    }
-
-    .active-bundle-body {
-      display: flex;
-      gap: 12px;
-    }
-
-    .active-bundle-img {
-      width: 80px;
-      height: 80px;
-      border-radius: 6px;
-      object-fit: cover;
-      background: var(--gg-bg);
-      flex-shrink: 0;
-    }
-
-    .active-bundle-content {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .active-bundle-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 6px;
-    }
-
-    .active-bundle-title {
-      font-weight: 700;
-      font-size: 0.88rem;
-    }
-
-    .active-bundle-store {
-      font-size: 0.68rem;
-      font-weight: 700;
-      color: var(--gg-text-muted);
-      background: var(--gg-hover);
-      padding: 2px 8px;
-      border-radius: 10px;
-    }
-
-    .active-bundle-store-logo {
-      height: 20px;
-      width: 20px;
-      border-radius: 4px;
-      object-fit: cover;
-      background: #fff;
-      padding: 2px;
-    }
-
-    /* ── Detected ───────────────────────────────────────────── */
-    .detected-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-
-    .detected-header h3 {
-      font-size: 0.88rem;
-      font-weight: 700;
-    }
-
-    .detected-store {
-      font-size: 0.68rem;
-      font-weight: 700;
-      background: var(--gg-hover);
-      color: var(--gg-text-sec);
-      padding: 3px 10px;
-      border-radius: 12px;
-    }
-
-    /* ── Dashboard sections ─────────────────────────────────── */
-    .dashboard-section {
-      margin-bottom: 18px;
-    }
-
-    .dashboard-section-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.78rem;
-      font-weight: 900;
-      color: var(--gg-text-sec);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 10px;
-      padding: 6px 10px;
-      background: var(--gg-accent-bg);
-      border-radius: var(--gg-radius);
-      border-left: 3px solid var(--gg-accent);
-    }
-
-    .dashboard-section-header .dash-icon {
-      font-size: 1.05rem;
-    }
-
-    .dashboard-mini-card {
-      background: var(--gg-card);
-      border: 1px solid var(--gg-border);
-      border-radius: var(--gg-radius);
-      padding: 10px;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      box-shadow: var(--gg-shadow);
-    }
-
-    .dashboard-mini-card:hover {
-      background: var(--gg-hover);
-      transform: translateY(-1px);
-      box-shadow: rgba(0, 0, 0, 0.12) 0px 6px 16px;
-    }
-
-    .dashboard-mini-img {
-      width: 72px;
-      height: 72px;
-      border-radius: 6px;
-      object-fit: cover;
-      background: var(--gg-bg);
-      flex-shrink: 0;
-    }
-
-    .dashboard-mini-info {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 4px;
-    }
-
-    .dashboard-mini-title {
-      font-weight: 900;
-      font-size: 0.95rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      color: var(--gg-text);
-    }
-
-    .dashboard-mini-prices {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .dashboard-mini-price {
-      font-weight: 900;
-      font-size: 1.05rem;
-      color: var(--gg-green);
-      line-height: 1;
-    }
-
-    .dashboard-mini-meta {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    /* Solid Pill Badges */
-    .pill-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.65rem;
-      font-weight: 700;
-      color: #fff;
-      line-height: 1.2;
-    }
-
-    .pill-discount {
-      background: var(--gg-green);
-    }
-
-    .pill-low {
-      background: var(--gg-gold);
-    }
-
-    .pill-same {
-      background: var(--gg-text-muted);
-    }
-
-    .pill-higher {
-      background: var(--gg-red);
-    }
-
-    /* Deal Score Column */
-    .dashboard-mini-score-col {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      flex-shrink: 0;
-      padding-left: 8px;
-      border-left: 1px solid var(--gg-border);
-    }
-
-    .dashboard-mini-score-label {
-      font-size: 0.6rem;
-      color: var(--gg-text-sec);
-      text-transform: uppercase;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-    }
-
-    /* ── Loading / states ──────────────────────────────────── */
-    .loading {
-      text-align: center;
-      padding: 24px;
-      color: var(--gg-text-sec);
-    }
-
-    .spinner {
-      border: 2.5px solid var(--gg-border);
-      border-top: 2.5px solid var(--gg-accent);
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 8px;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    .loading-text {
-      font-size: 0.82rem;
-      font-weight: 700;
-    }
-
-    .error {
-      background: #fff5f5;
-      border: 1px solid #f5c6cb;
-      color: var(--gg-red);
-      padding: 10px 12px;
-      border-radius: var(--gg-radius);
-      font-size: 0.82rem;
-      margin: 8px 0;
-      display: flex;
-      align-items: flex-start;
-      gap: 6px;
-    }
-
-    body.theme-dark .error,
-    body.theme-oled .error {
-      background: #2a1a1a;
-      border-color: #4a2222;
-    }
-
-    .error-actions {
-      margin-top: 6px;
-    }
-
-    .empty {
-      text-align: center;
-      padding: 28px 16px;
-      color: var(--gg-text-muted);
-      font-size: 0.88rem;
-      line-height: 1.5;
-    }
-
-    .empty-icon {
-      font-size: 2rem;
-      margin-bottom: 8px;
-      display: block;
-    }
-
-    /* ── Toast ──────────────────────────────────────────────── */
-    .toast-container {
-      position: fixed;
-      top: 8px;
-      left: 8px;
-      right: 8px;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      pointer-events: none;
-    }
-
-    .toast {
-      background: var(--gg-header);
-      border-radius: var(--gg-radius);
-      padding: 8px 14px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      pointer-events: auto;
-      animation: toastIn 0.3s ease-out;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-    }
-
-    .toast.toast-out {
-      animation: toastOut 0.25s ease-in forwards;
-    }
-
-    .toast.success {
-      background: var(--gg-green);
-    }
-
-    .toast.info {
-      background: var(--gg-accent);
-    }
-
-    .toast.warn {
-      background: var(--gg-orange);
-    }
-
-    .toast.error {
-      background: var(--gg-red);
-      color: #fff;
-      border: none;
-    }
-
-    @keyframes toastIn {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes toastOut {
-      from {
-        opacity: 1;
-      }
-
-      to {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-    }
-
-    /* ── Wishlist ───────────────────────────────────────────── */
-    .wishlist-item {
-      background: var(--gg-card);
-      border: 1px solid var(--gg-border);
-      border-radius: var(--gg-radius);
-      margin-bottom: 8px;
-      box-shadow: var(--gg-shadow);
-      overflow: hidden;
-    }
-
-    .wishlist-item:last-child {
-      margin-bottom: 0;
-    }
-
-    .wishlist-header {
-      padding: 12px 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: background 0.15s;
-    }
-
-    .wishlist-img {
-      width: 48px;
-      height: 48px;
-      border-radius: 4px;
-      object-fit: cover;
-      background: var(--gg-bg);
-      flex-shrink: 0;
-    }
-
-    .wishlist-header:hover {
-      background: var(--gg-hover);
-    }
-
-    .wishlist-header-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .wishlist-title {
-      font-weight: 700;
-      font-size: 0.88rem;
-      margin-bottom: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .wishlist-meta {
-      color: var(--gg-text-muted);
-      font-size: 0.7rem;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .wishlist-meta .price-at {
-      color: var(--gg-green);
-      font-weight: 700;
-    }
-
-    .wishlist-price-badge {
-      font-size: 0.82rem;
-      font-weight: 900;
-      color: var(--gg-green);
-      white-space: nowrap;
-    }
-
-    .wishlist-price-badge.unknown {
-      color: var(--gg-text-muted);
-      font-weight: 400;
-      font-size: 0.75rem;
-    }
-
-    .wishlist-expand-icon {
-      color: var(--gg-text-muted);
-      font-size: 0.7rem;
-      transition: transform 0.2s;
-      flex-shrink: 0;
-    }
-
-    .wishlist-item.expanded .wishlist-expand-icon {
-      transform: rotate(180deg);
-    }
-
-    .wishlist-detail {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease;
-    }
-
-    .wishlist-item.expanded .wishlist-detail {
-      max-height: 600px;
-    }
-
-    .wishlist-detail-inner {
-      padding: 0 14px 12px;
-      border-top: 1px solid var(--gg-border);
-    }
-
-    .wishlist-price-change {
-      display: inline-flex;
-      align-items: center;
-      gap: 2px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      padding: 1px 6px;
-      border-radius: 3px;
-    }
-
-    .wishlist-price-change.down {
-      background: var(--gg-green-bg);
-      color: var(--gg-green);
-    }
-
-    .wishlist-price-change.up {
-      background: #ffe5e5;
-      color: var(--gg-red);
-    }
-
-    .wishlist-price-change.same {
-      background: var(--gg-hover);
-      color: var(--gg-text-muted);
-    }
-
-    .wishlist-alert-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 8px;
-      padding: 8px 10px;
-      background: var(--gg-price-bg);
-      border-radius: 4px;
-      font-size: 0.78rem;
-    }
-
-    .wishlist-alert-row input[type="number"] {
-      width: 80px;
-      padding: 4px 8px;
-      border: 1px solid var(--gg-border);
-      border-radius: 4px;
-      font-size: 0.78rem;
-      font-family: 'Lato', sans-serif;
-      color: var(--gg-text);
-      background: var(--gg-input-bg);
-    }
-
-    .wishlist-actions {
-      display: flex;
-      gap: 6px;
-      margin-top: 10px;
-      flex-wrap: wrap;
-    }
-
-    /* ── Settings ───────────────────────────────────────────── */
-    .settings-group {
-      background: var(--gg-card);
-      border: 1px solid var(--gg-border);
-      border-radius: var(--gg-radius);
-      padding: 14px;
-      margin-bottom: 10px;
-      box-shadow: var(--gg-shadow);
-      transition: background 0.3s;
-    }
-
-    .settings-group h3 {
-      font-size: 0.8rem;
-      font-weight: 700;
-      margin-bottom: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .setting-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 0.82rem;
-      margin-bottom: 8px;
-    }
-
-    .setting-row:last-child {
-      margin-bottom: 0;
-    }
-
-    .setting-row label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-    }
-
-    .setting-row select,
-    .setting-row input[type="text"] {
-      flex: 1;
-      padding: 6px 10px;
-      background: var(--gg-input-bg);
-      border: 1px solid var(--gg-border);
-      color: var(--gg-text);
-      border-radius: 4px;
-      font-size: 0.8rem;
-      font-family: 'Lato', sans-serif;
-    }
-
-    /* Theme picker grid */
-    .theme-picker {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .theme-opt {
-      padding: 6px 12px;
-      border: 2px solid var(--gg-border);
-      border-radius: var(--gg-radius);
-      cursor: pointer;
-      font-size: 0.75rem;
-      font-weight: 700;
-      font-family: 'Lato', sans-serif;
-      background: var(--gg-card);
-      color: var(--gg-text);
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .theme-opt:hover {
-      border-color: var(--gg-accent);
-    }
-
-    .theme-opt.active {
-      border-color: var(--gg-accent);
-      background: var(--gg-accent-bg);
-      color: var(--gg-accent);
-    }
-
-    /* Accent color picker */
-    .accent-picker {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .accent-opt {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      cursor: pointer;
-      border: 3px solid transparent;
-      transition: all 0.2s;
-      position: relative;
-    }
-
-    .accent-opt:hover {
-      transform: scale(1.15);
-    }
-
-    .accent-opt.active {
-      border-color: var(--gg-text);
-      box-shadow: 0 0 0 2px var(--gg-bg);
-    }
-
-    .accent-opt[data-accent="blue"] {
-      background: #007bff;
-    }
-
-    .accent-opt[data-accent="green"] {
-      background: #048044;
-    }
-
-    .accent-opt[data-accent="purple"] {
-      background: #7c3aed;
-    }
-
-    .accent-opt[data-accent="red"] {
-      background: #dc3545;
-    }
-
-    .accent-opt[data-accent="orange"] {
-      background: #e67e22;
-    }
-
-    .accent-opt[data-accent="pink"] {
-      background: #ec4899;
-    }
-
-    .accent-opt[data-accent="cyan"] {
-      background: #06b6d4;
-    }
-
-    /* Toggle switch */
-    .toggle-switch {
-      position: relative;
-      width: 36px;
-      height: 20px;
-      appearance: none;
-      -webkit-appearance: none;
-      background: #ccc;
-      border-radius: 20px;
-      cursor: pointer;
-      transition: all 0.25s;
-      border: none;
-      outline: none;
-      flex-shrink: 0;
-    }
-
-    .toggle-switch::after {
-      content: '';
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 16px;
-      height: 16px;
-      background: #fff;
-      border-radius: 50%;
-      transition: all 0.25s;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
-
-    .toggle-switch:checked {
-      background: var(--gg-green);
-    }
-
-    .toggle-switch:checked::after {
-      left: 18px;
-    }
-
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.78rem;
-      color: var(--gg-text-sec);
-      padding: 4px 0;
-    }
-
-    .stat-value {
-      color: var(--gg-text);
-      font-weight: 700;
-    }
-
-    /* ── Quick / recent searches ────────────────────────────── */
-    .quick-games {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    .quick-btn {
-      padding: 6px 10px;
-      background: var(--gg-card);
-      border: 1px solid var(--gg-border);
-      color: var(--gg-text-sec);
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.78rem;
-      font-weight: 700;
-      font-family: 'Lato', sans-serif;
-      transition: all 0.2s;
-    }
-
-    .quick-btn:hover {
-      border-color: var(--gg-accent);
-      color: var(--gg-accent);
-      background: var(--gg-accent-bg);
-    }
-
-    /* ── Chart ──────────────────────────────────────────────── */
-    .chart-container {
-      margin: 6px 0 4px;
-      padding: 8px 10px;
-      background: var(--gg-price-bg);
-      border-radius: 4px;
-    }
-
-    .chart-label {
-      font-size: 0.68rem;
-      font-weight: 700;
-      color: var(--gg-text-muted);
-      margin-bottom: 4px;
-      text-transform: uppercase;
-    }
-
-    .chart-bars {
-      display: flex;
-      align-items: flex-end;
-      gap: 2px;
-      height: 36px;
-    }
-
-    .chart-bar {
-      flex: 1;
-      background: var(--gg-green);
-      border-radius: 2px 2px 0 0;
-      min-height: 3px;
-      opacity: 0.7;
-      cursor: help;
-    }
-
-    .chart-bar:hover {
-      opacity: 1;
-    }
-
-    .chart-range {
-      font-size: 0.65rem;
-      color: var(--gg-text-muted);
-      text-align: center;
-      margin-top: 3px;
-    }
-
-    /* ── Section labels ────────────────────────────────────── */
-    .section-label {
-      font-size: 0.7rem;
-      color: var(--gg-text-muted);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 6px;
-    }
-
-    /* ── Skeleton ───────────────────────────────────────────── */
-    .skeleton {
-      background: linear-gradient(90deg, var(--gg-border) 25%, var(--gg-hover) 50%, var(--gg-border) 75%);
-      background-size: 200% 100%;
-      animation: skeletonShimmer 1.5s ease-in-out infinite;
-      border-radius: var(--gg-radius);
-    }
-
-    @keyframes skeletonShimmer {
-      0% {
-        background-position: 200% 0;
-      }
-
-      100% {
-        background-position: -200% 0;
-      }
-    }
-
-    .skeleton-card {
-      height: 110px;
-      margin-bottom: 8px;
-    }
-
-    /* ── Scrollbar ──────────────────────────────────────────── */
-    .content::-webkit-scrollbar {
-      width: 5px;
-    }
-
-    .content::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .content::-webkit-scrollbar-thumb {
-      background: var(--gg-border);
-      border-radius: 10px;
-    }
-
-    /* ── Footer ─────────────────────────────────────────────── */
-    .footer {
-      padding: 8px 16px;
-      text-align: center;
-      font-size: 0.65rem;
-      color: var(--gg-text-muted);
-      background: var(--gg-card);
-      border-top: 1px solid var(--gg-border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: background 0.3s;
-    }
-
-    .footer a {
-      color: var(--gg-accent);
-      text-decoration: none;
-      font-weight: 700;
-    }
-
-    .rate-limit {
-      font-size: 0.62rem;
-    }
-
-    .rate-limit.low {
-      color: var(--gg-orange);
-    }
-
-    .rate-limit.ok {
-      color: var(--gg-green);
-    }
-
-    /* ── Hidden file input ─────────────────────────────────── */
-    .hidden {
-      display: none;
-    }
-  </style>
+  <link rel="stylesheet" href="popup.css">
 </head>
 
 <body>
@@ -1550,17 +21,20 @@
       <div class="header-logo">GG<span class="logo-dot"><span class="logo-red"></span><span
             class="logo-blue"></span></span>DEALS</div>
       <div class="header-sep"></div>
-      <div class="header-title" style="font-size:0.9rem; margin-top:3px;">GG Buddy</div>
+      <div class="header-title header-title--popup">GG Buddy</div>
     </div>
-    <span id="scanBadge" class="scan-badge empty">No page scanned</span>
+    <span id="scanBadge" class="scan-badge empty" data-i18n="noPageScanned">No page scanned</span>
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="detected"><span class="tab-icon">🎯</span> Detected</button>
-    <button class="tab-btn" data-tab="search"><span class="tab-icon">🔍</span> Search</button>
-    <button class="tab-btn" data-tab="bundles"><span class="tab-icon">📦</span> Bundles</button>
-    <button class="tab-btn" data-tab="wishlist"><span class="tab-icon">♡</span> Wishlist</button>
-    <button class="tab-btn" data-tab="settings"><span class="tab-icon">⚙</span> Settings</button>
+    <button class="tab-btn active" data-tab="detected"><span class="tab-icon">🎯</span> <span data-i18n="tabDetected">Detected</span></button>
+    <button class="tab-btn" data-tab="search"><span class="tab-icon">🔍</span> <span data-i18n="tabSearch">Search</span></button>
+    <button class="tab-btn" data-tab="bundles"><span class="tab-icon">📦</span> <span data-i18n="tabBundles">Bundles</span></button>
+    <button class="tab-btn" data-tab="wishlist"><span class="tab-icon">♡</span> <span data-i18n="tabWishlist">Wishlist</span></button>
+    <button class="tab-btn" data-tab="settings"><span class="tab-icon">⚙</span> <span data-i18n="tabSettings">Settings</span></button>
+  </div>
+  <div class="api-status-bar" id="apiStatusBar">
+    <span class="rate-limit" id="rateLimit"></span>
   </div>
 
   <div class="content">
@@ -1570,8 +44,9 @@
 
     <div id="searchTab" class="tab-content">
       <div class="search-box">
-        <input type="text" id="gameId" placeholder="Search by Steam App ID or game name…" maxlength="200" />
-        <select id="region">
+        <input type="text" id="gameId" data-i18n-placeholder="searchPlaceholder" placeholder="Search by Steam App ID or game name…" maxlength="200"
+          aria-label="Search by Steam App ID or game name" />
+        <select id="region" aria-label="Currency">
           <option value="us">USD</option>
           <option value="au">AUD</option>
           <option value="br">BRL</option>
@@ -1586,11 +61,11 @@
           <option value="no">NOK</option>
           <option value="ch">CHF</option>
         </select>
-        <button id="searchBtn">Search</button>
+        <button id="searchBtn" data-i18n="searchBtn">Search</button>
       </div>
-      <div class="section-label">Recent Searches</div>
+      <div class="section-label" data-i18n="recentSearches">Recent Searches</div>
       <div class="quick-games" id="recentSearchesContainer">
-        <div style="font-size:0.78rem;color:var(--gg-text-muted);padding:4px 0">No recent searches</div>
+        <div class="muted-inline" data-i18n="noRecentSearches">No recent searches</div>
       </div>
       <div id="searchResults"></div>
     </div>
@@ -1602,21 +77,21 @@
     <div id="wishlistTab" class="tab-content">
       <div id="wishlistHeader"></div>
       <div id="wishlistContent"></div>
-      <input type="file" id="importFileInput" accept=".json" class="hidden" />
+      <input type="file" id="importFileInput" accept=".json" class="hidden" aria-label="Import wishlist JSON file" />
     </div>
 
     <div id="settingsTab" class="tab-content">
       <div class="settings-group">
-        <h3>🎨 Theme</h3>
+        <h3>🎨 <span data-i18n="settingsTheme">Theme</span></h3>
         <div class="theme-picker" id="themePicker">
-          <button class="theme-opt active" data-theme="light">☀️ Light</button>
-          <button class="theme-opt" data-theme="dark">🌙 Dark</button>
-          <button class="theme-opt" data-theme="oled">⬛ OLED</button>
-          <button class="theme-opt" data-theme="system">🔄 System</button>
+          <button class="theme-opt active" data-theme="light">☀️ <span data-i18n="themeLight">Light</span></button>
+          <button class="theme-opt" data-theme="dark">🌙 <span data-i18n="themeDark">Dark</span></button>
+          <button class="theme-opt" data-theme="oled">⬛ <span data-i18n="themeOled">OLED</span></button>
+          <button class="theme-opt" data-theme="system">🔄 <span data-i18n="themeSystem">System</span></button>
         </div>
       </div>
       <div class="settings-group">
-        <h3>🎨 Accent Color</h3>
+        <h3>🎨 <span data-i18n="settingsAccent">Accent Color</span></h3>
         <div class="accent-picker" id="accentPicker">
           <div class="accent-opt active" data-accent="blue" title="Blue"></div>
           <div class="accent-opt" data-accent="green" title="Green"></div>
@@ -1628,93 +103,110 @@
         </div>
       </div>
       <div class="settings-group">
-        <h3>⚙️ Preferences</h3>
+        <h3>⚙️ <span data-i18n="settingsPreferences">Preferences</span></h3>
         <div class="setting-row">
-          <label><input type="checkbox" id="compactMode" class="toggle-switch" /><span>Compact mode</span></label>
+          <label><input type="checkbox" id="compactMode" class="toggle-switch" /><span data-i18n="prefCompactMode">Compact mode</span></label>
         </div>
         <div class="setting-row">
-          <label><input type="checkbox" id="dealScoresEnabled" class="toggle-switch" checked /><span>Show Deal
-              Scores</span></label>
+          <label><input type="checkbox" id="dealScoresEnabled" class="toggle-switch" checked /><span data-i18n="prefDealScores">Show Deal Scores</span></label>
         </div>
         <div class="setting-row">
-          <label><input type="checkbox" id="overlayEnabled" class="toggle-switch" checked /><span>Price overlay on store
-              pages</span></label>
+          <label><input type="checkbox" id="overlayEnabled" class="toggle-switch" checked /><span data-i18n="prefOverlay">Price overlay on store pages</span></label>
         </div>
         <div class="setting-row">
-          <label><input type="checkbox" id="autoCheckWishlist" class="toggle-switch" /><span>Auto-check prices on
-              open</span></label>
+          <label><input type="checkbox" id="autoCheckWishlist" class="toggle-switch" /><span data-i18n="prefAutoCheck">Auto-check prices on open</span></label>
         </div>
       </div>
       <div class="settings-group">
-        <h3>☁️ Cloud Sync</h3>
+        <h3>💱 <span data-i18n="settingsRegion">Region &amp; Currency</span></h3>
         <div class="setting-row">
-          <label><input type="checkbox" id="syncEnabled" class="toggle-switch" checked /><span>Sync wishlist & settings
-              across devices</span></label>
+          <span data-i18n="prefRegion">Default region</span>
+          <select id="regionSetting" aria-label="Default region">
+            <option value="us">USD (US)</option>
+            <option value="au">AUD (AU)</option>
+            <option value="br">BRL (BR)</option>
+            <option value="ca">CAD (CA)</option>
+            <option value="de">EUR (DE)</option>
+            <option value="fr">EUR (FR)</option>
+            <option value="gb">GBP (GB)</option>
+            <option value="pl">PLN (PL)</option>
+            <option value="eu">EUR (EU)</option>
+            <option value="se">SEK (SE)</option>
+            <option value="dk">DKK (DK)</option>
+            <option value="no">NOK (NO)</option>
+            <option value="ch">CHF (CH)</option>
+          </select>
         </div>
-        <div style="font-size:0.7rem;color:var(--gg-text-muted);margin-top:4px;">
+        <div class="helper-text" data-i18n="prefRegionDescription">
+          Used for prices, bundles, overlays, and wishlist alerts. You can still override the region per-search in the Search tab.
+        </div>
+      </div>
+      <div class="settings-group">
+        <h3>☁️ <span data-i18n="settingsCloudSync">Cloud Sync</span></h3>
+        <div class="setting-row">
+          <label><input type="checkbox" id="syncEnabled" class="toggle-switch" checked /><span data-i18n="prefSyncWishlist">Sync wishlist & settings across devices</span></label>
+        </div>
+        <div class="helper-text" data-i18n="syncDescription">
           Sign into Chrome to sync your wishlist, preferences, and alerts across all your devices. No account needed —
           uses your Google Chrome profile.
         </div>
       </div>
       <div class="settings-group">
-        <h3>🔔 Notifications</h3>
+        <h3>🔔 <span data-i18n="settingsNotifications">Notifications</span></h3>
         <div class="setting-row">
-          <label><input type="checkbox" id="notifEnabled" class="toggle-switch" /><span>Price drop
-              notifications</span></label>
+          <label><input type="checkbox" id="notifEnabled" class="toggle-switch" /><span data-i18n="prefPriceDropNotifs">Price drop notifications</span></label>
         </div>
         <div class="setting-row">
-          <span>Check every:</span>
-          <select id="checkFreq">
-            <option value="60">1 hour</option>
-            <option value="360" selected>6 hours</option>
-            <option value="1440">24 hours</option>
+          <span data-i18n="checkEvery">Check every:</span>
+          <select id="checkFreq" aria-label="Notification check frequency">
+            <option value="60" data-i18n="freq1Hour">1 hour</option>
+            <option value="360" selected data-i18n="freq6Hours">6 hours</option>
+            <option value="1440" data-i18n="freq24Hours">24 hours</option>
           </select>
         </div>
       </div>
       <div class="settings-group">
-        <h3>🔑 API Key</h3>
+        <h3>🔑 <span data-i18n="settingsApiKey">API Key</span></h3>
         <div class="setting-row">
-          <input type="text" id="apiKeyInput" placeholder="Your GG.deals API key (optional)" />
+          <input type="text" id="apiKeyInput" data-i18n-placeholder="apiKeyPlaceholder" placeholder="Your GG.deals API key (optional)" />
         </div>
-        <div style="font-size:0.7rem;color:var(--gg-text-muted);margin-top:4px;">
-          Get one from <a href="https://gg.deals/settings/" target="_blank" rel="noopener"
-            style="color:var(--gg-accent);font-weight:700;">gg.deals/settings</a>
+        <div class="helper-text">
+          <span data-i18n="apiKeyDescription">Get one from</span> <a href="https://gg.deals/settings/" target="_blank" rel="noopener"
+            class="api-key-link">gg.deals/settings</a>
         </div>
       </div>
       <div class="settings-group">
-        <h3>📊 Statistics</h3>
-        <div class="stat-row"><span>Wishlist games</span><span class="stat-value" id="wishlistCount">0</span></div>
-        <div class="stat-row"><span>Price history records</span><span class="stat-value" id="historyCount">0</span>
+        <h3>📊 <span data-i18n="settingsStatistics">Statistics</span></h3>
+        <div class="stat-row"><span data-i18n="statWishlistGames">Wishlist games</span><span class="stat-value" id="wishlistCount">0</span></div>
+        <div class="stat-row"><span data-i18n="statPriceHistory">Price history records</span><span class="stat-value" id="historyCount">0</span>
         </div>
-        <div class="stat-row"><span>Cached prices</span><span class="stat-value" id="cacheCount">0</span></div>
+        <div class="stat-row"><span data-i18n="statCachedPrices">Cached prices</span><span class="stat-value" id="cacheCount">0</span></div>
       </div>
       <div class="settings-group">
-        <h3>🧹 Maintenance</h3>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn-sm btn-outline" id="clearCacheBtn">Clear Cache</button>
-          <button class="btn-sm btn-danger" id="clearHistoryBtn">Clear History</button>
+        <h3>🧹 <span data-i18n="settingsMaintenance">Maintenance</span></h3>
+        <div class="maintenance-actions">
+          <button class="btn-sm btn-outline" id="clearCacheBtn" data-i18n="clearCache">Clear Cache</button>
+          <button class="btn-sm btn-danger" id="clearHistoryBtn" data-i18n="clearHistory">Clear History</button>
         </div>
       </div>
-      <div class="settings-group"
-        style="padding:16px; margin-top:16px; background:var(--gg-hover); border:1px solid var(--gg-border); border-radius:var(--gg-radius);">
-        <h3 style="margin-bottom:8px;">☕ Support the Developer</h3>
-        <div style="font-size:0.78rem; line-height:1.4; color:var(--gg-text); margin-bottom:12px;">
+      <div class="settings-group support-card">
+        <h3 class="support-title">☕ <span data-i18n="supportTitle">Support the Developer</span></h3>
+        <div class="support-desc" data-i18n="supportDescription">
           GG Buddy is free and open-source. If it helped you save some money on a big game, consider buying me a coffee!
         </div>
         <a href="https://www.buymeacoffee.com/ggbuddy" target="_blank" rel="noopener"
-          style="display:inline-block; padding:8px 16px; background:#FFDD00; color:#000000; font-weight:bold; text-decoration:none; border-radius:8px; font-size:0.8rem; border:1px solid #e0c200; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-          ❤️ Buy me a coffee
+          class="support-link">
+          ❤️ <span data-i18n="supportButton">Buy me a coffee</span>
         </a>
       </div>
     </div>
 
     <div class="footer">
-      <span>Powered by <a href="https://gg.deals" target="_blank" rel="noopener">GG.deals</a> API</span>
-      <span style="font-size:0.8rem; margin:0 8px; flex:1; text-align:center;">
+      <span><span data-i18n="footerPoweredBy">Powered by</span> <a href="https://gg.deals" target="_blank" rel="noopener">GG.deals</a> API</span>
+      <span class="footer-center">
         <a href="https://www.buymeacoffee.com/ggbuddy" target="_blank" rel="noopener" title="Support the Developer"
-          style="color:var(--gg-red); text-decoration:none;">❤️</a>
+          class="footer-heart">❤️</a>
       </span>
-      <span class="rate-limit" id="rateLimit"></span>
     </div>
 
     <script src="popup.js"></script>

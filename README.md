@@ -3,7 +3,7 @@
 A Chrome extension that automatically compares PC game prices across 17+ stores using [GG.deals](https://gg.deals). Never overpay for a game again.
 
 ![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-blue?logo=googlechrome&logoColor=white)
-![Version](https://img.shields.io/badge/version-2.1.0-green)
+![Version](https://img.shields.io/badge/version-2.3.0-green)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ## Features
@@ -23,6 +23,8 @@ A Chrome extension that automatically compares PC game prices across 17+ stores 
 🎨 **Full Customization** — 4 themes (Light/Dark/OLED/System), 7 accent colors, compact mode
 
 ☁️ **Cross-Device Sync** — Wishlist and settings sync across Chrome instances
+
+🌐 **18 Languages** — Full UI localization (Czech, Danish, German, English, Spanish, Finnish, French, Italian, Japanese, Korean, Norwegian, Polish, Portuguese, Russian, Swedish, Ukrainian, Chinese Simplified)
 
 ## Installation
 

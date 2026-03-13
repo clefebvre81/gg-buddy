@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "GG Buddy",
-  "version": "2.1.0",
-  "description": "Automatically scan game store pages and find the best deals via GG.deals — works on Steam, Epic, GOG, keyshops, and any gaming site",
+  "name": "__MSG_extName__",
+  "version": "2.3.1",
+  "version_name": "2.3.1",
+  "default_locale": "en",
+  "description": "__MSG_extDescription__",
   "permissions": [
     "contextMenus",
     "storage",
@@ -34,7 +36,13 @@
         "https://www.gamersgate.com/*",
         "https://www.wingamestore.com/*",
         "https://www.dlgamer.com/*",
-        "https://digiphile.co/*"
+        "https://digiphile.co/*",
+        "https://*.fitgirl-repacks.site/*",
+        "https://fitgirl-repacks.site/*",
+        "https://*.igg-games.com/*",
+        "https://igg-games.com/*",
+        "https://*.gog-games.com/*",
+        "https://gog-games.com/*"
       ],
       "js": [
         "content.js"

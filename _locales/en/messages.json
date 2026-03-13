@@ -1,0 +1,383 @@
+{
+  "extName": { "message": "GG Buddy" },
+  "extDescription": { "message": "Automatically scan game store pages and find the best deals via GG.deals — works on Steam, Epic, GOG, keyshops, and any gaming site" },
+
+  "tabDetected": { "message": "Detected" },
+  "tabSearch": { "message": "Search" },
+  "tabBundles": { "message": "Bundles" },
+  "tabWishlist": { "message": "Wishlist" },
+  "tabSettings": { "message": "Settings" },
+
+  "searchPlaceholder": { "message": "Search by Steam App ID or game name…" },
+  "searchBtn": { "message": "Search" },
+  "recentSearches": { "message": "Recent Searches" },
+  "noRecentSearches": { "message": "No recent searches" },
+  "noPageScanned": { "message": "No page scanned" },
+
+  "settingsTheme": { "message": "Theme" },
+  "themeLight": { "message": "Light" },
+  "themeDark": { "message": "Dark" },
+  "themeOled": { "message": "OLED" },
+  "themeSystem": { "message": "System" },
+
+  "settingsAccent": { "message": "Accent Color" },
+  "accentBlue": { "message": "Blue" },
+  "accentGreen": { "message": "Green" },
+  "accentPurple": { "message": "Purple" },
+  "accentRed": { "message": "Red" },
+  "accentOrange": { "message": "Orange" },
+  "accentPink": { "message": "Pink" },
+  "accentCyan": { "message": "Cyan" },
+
+  "settingsPreferences": { "message": "Preferences" },
+  "prefCompactMode": { "message": "Compact mode" },
+  "prefDealScores": { "message": "Show Deal Scores" },
+  "prefOverlay": { "message": "Price overlay on store pages" },
+  "prefAutoCheck": { "message": "Auto-check prices on open" },
+
+  "settingsCloudSync": { "message": "Cloud Sync" },
+  "prefSyncWishlist": { "message": "Sync wishlist & settings across devices" },
+  "syncDescription": { "message": "Sign into Chrome to sync your wishlist, preferences, and alerts across all your devices. No account needed — uses your Google Chrome profile." },
+
+  "settingsNotifications": { "message": "Notifications" },
+  "prefPriceDropNotifs": { "message": "Price drop notifications" },
+  "checkEvery": { "message": "Check every:" },
+  "freq1Hour": { "message": "1 hour" },
+  "freq6Hours": { "message": "6 hours" },
+  "freq24Hours": { "message": "24 hours" },
+
+  "settingsApiKey": { "message": "API Key" },
+  "apiKeyPlaceholder": { "message": "Your GG.deals API key (optional)" },
+  "apiKeyDescription": { "message": "Get one from" },
+
+  "settingsStatistics": { "message": "Statistics" },
+  "statWishlistGames": { "message": "Wishlist games" },
+  "statPriceHistory": { "message": "Price history records" },
+  "statCachedPrices": { "message": "Cached prices" },
+
+  "settingsMaintenance": { "message": "Maintenance" },
+  "clearCache": { "message": "Clear Cache" },
+  "clearHistory": { "message": "Clear History" },
+
+  "supportTitle": { "message": "Support the Developer" },
+  "supportDescription": { "message": "GG Buddy is free and open-source. If it helped you save some money on a big game, consider buying me a coffee!" },
+  "supportButton": { "message": "Buy me a coffee" },
+
+  "footerPoweredBy": { "message": "Powered by" },
+
+  "loading": { "message": "Loading…" },
+  "loadingWishlist": { "message": "Loading your full wishlist…" },
+  "loadingWishlistProgress": {
+    "message": "Loading wishlist… $count$ games found so far",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "searching": { "message": "Searching…" },
+  "fetchingPrices": { "message": "Fetching prices from GG.deals…" },
+  "fetchingPricesCount": {
+    "message": "Fetching prices for $count$ games… this may take a moment",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "buildingDashboard": { "message": "Building your deal dashboard…" },
+  "loadingPrices": { "message": "Loading prices…" },
+  "loadingBundles": { "message": "Loading active bundles…" },
+
+  "wishlistGamesCount": {
+    "message": "$count$ wishlist games",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "wishlistGameCount": {
+    "message": "$count$ wishlist game",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "gamesFoundCount": {
+    "message": "$count$ games found",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "gameFoundCount": {
+    "message": "$count$ game found",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+
+  "detectedOnPage": { "message": "Detected on this page" },
+  "yourWishlist": { "message": "Your Wishlist" },
+  "noPricingData": { "message": "No pricing data available for detected games" },
+  "noPricingDataShort": { "message": "No pricing data available" },
+
+  "importToWishlist": {
+    "message": "Import $count$ to Wishlist",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "importAllToWishlist": {
+    "message": "Import All $count$ Games to Wishlist",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "allInWishlist": { "message": "All games already in wishlist" },
+  "importedGames": {
+    "message": "Imported $count$ games",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "importedToWishlist": {
+    "message": "$count$ games imported to your wishlist",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "importedGoToWishlist": {
+    "message": "$count$ games imported. Go to Wishlist tab → Check All Prices to fetch current deals.",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+
+  "foundGamesInWishlist": {
+    "message": "Found $count$ games in your wishlist.",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "alreadyTracked": {
+    "message": "$count$ already tracked in your Deal Finder wishlist.",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "allAlreadyInWishlist": {
+    "message": "All $count$ games are already in your Deal Finder wishlist.",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "previewWithPrices": {
+    "message": "Preview with Prices (uses ~$count$ API calls)",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "viewPrices": {
+    "message": "View Prices (uses ~$count$ API calls)",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+
+  "rateLimitReached": { "message": "API rate limit reached." },
+  "resetsIn": {
+    "message": "Resets in ~$mins$ min.",
+    "placeholders": { "mins": { "content": "$1" } }
+  },
+  "noCachedData": { "message": "No cached price data yet." },
+  "noCachedDataDesc": { "message": "Prices will appear after the limit resets and you check prices." },
+  "trackedGamesOf": {
+    "message": "Your Tracked Games ($count$ of $total$ with prices)",
+    "placeholders": { "count": { "content": "$1" }, "total": { "content": "$2" } }
+  },
+
+  "priceDropsSinceAdded": { "message": "Price Drops Since You Added" },
+  "wasPrice": {
+    "message": "Was $price$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "atHistoricalLow": { "message": "At Historical Low" },
+  "histLow": {
+    "message": "Hist low: $price$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "trackedGames": {
+    "message": "Your Tracked Games ($count$)",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "pillHigher": { "message": "Higher" },
+  "pillSame": { "message": "Same" },
+  "pillLow": { "message": "Low" },
+
+  "dealScoreWait": { "message": "Wait" },
+  "dealScoreOk": { "message": "OK" },
+  "dealScoreGood": { "message": "Good" },
+  "dealScoreAmazing": { "message": "Amazing" },
+  "dealScoreTitle": {
+    "message": "Deal Score: $score$/100 — $label$",
+    "placeholders": { "score": { "content": "$1" }, "label": { "content": "$2" } }
+  },
+  "dealScoreLabel": { "message": "Deal Score" },
+
+  "officialStores": { "message": "Official Stores" },
+  "keyshops": { "message": "Keyshops" },
+  "bestDeal": { "message": "Best deal" },
+  "historicalLowRetail": { "message": "Historical Low (Retail)" },
+  "historicalLowKeyshop": { "message": "Historical Low (Keyshop)" },
+  "atHistoricalLowTag": { "message": "At historical low!" },
+  "priceHistory": { "message": "Price History" },
+  "official": { "message": "Official" },
+  "keyshop": { "message": "Keyshop" },
+
+  "wishlisted": { "message": "Wishlisted" },
+  "wishlistBtn": { "message": "Wishlist" },
+  "bundlesBtn": { "message": "Bundles" },
+  "viewOnGgDeals": { "message": "View on GG.deals →" },
+  "viewBundle": { "message": "View bundle →" },
+  "viewArrow": { "message": "View →" },
+
+  "addedToWishlist": {
+    "message": "$title$ added to wishlist",
+    "placeholders": { "title": { "content": "$1" } }
+  },
+  "removedFromWishlist": { "message": "Removed from wishlist" },
+  "noActiveBundlesGame": { "message": "No active bundles for this game" },
+  "noActiveBundles": { "message": "No active bundles" },
+  "noActiveBundlesNow": { "message": "No active bundles right now" },
+  "activeBundlesCount": {
+    "message": "$count$ Active Bundles",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "activeBundleCount": {
+    "message": "$count$ Active Bundle",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "daysLeft": {
+    "message": "$days$ days left",
+    "placeholders": { "days": { "content": "$1" } }
+  },
+  "dayLeft": {
+    "message": "$days$ day left",
+    "placeholders": { "days": { "content": "$1" } }
+  },
+  "games": { "message": "games" },
+  "game": { "message": "game" },
+
+  "noWishlistGames": { "message": "No games in your wishlist yet." },
+  "noWishlistGamesHint": { "message": "Add games from the Detected or Search tabs." },
+  "yourWishlistCount": {
+    "message": "Your Wishlist ($count$)",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "exportBtn": { "message": "Export" },
+  "importBtn": { "message": "Import" },
+  "checkAllPrices": { "message": "Check All Prices" },
+  "checking": { "message": "Checking…" },
+  "clickToCheck": { "message": "Click to check" },
+  "addedOn": {
+    "message": "Added $date$",
+    "placeholders": { "date": { "content": "$1" } }
+  },
+  "atPrice": {
+    "message": "at $price$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+
+  "pricesUpdated": {
+    "message": "Prices updated for $count$ games",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "pricesUpdatedTitles": {
+    "message": "Prices updated for $count$ games, $titles$ titles resolved",
+    "placeholders": { "count": { "content": "$1" }, "titles": { "content": "$2" } }
+  },
+  "failedCheckPrices": { "message": "Failed to check prices" },
+
+  "alertBelow": { "message": "Alert below" },
+  "pricePlaceholder": { "message": "Price" },
+  "removeBtn": { "message": "Remove" },
+  "alertEnabled": { "message": "Alert enabled" },
+  "alertDisabled": { "message": "Alert disabled" },
+
+  "lowerBy": {
+    "message": "$amount$ lower",
+    "placeholders": { "amount": { "content": "$1" } }
+  },
+  "higherBy": {
+    "message": "$amount$ higher",
+    "placeholders": { "amount": { "content": "$1" } }
+  },
+  "samePrice": { "message": "Same price" },
+
+  "removed": {
+    "message": "$title$ removed",
+    "placeholders": { "title": { "content": "$1" } }
+  },
+  "exportedGames": {
+    "message": "Exported $count$ games",
+    "placeholders": { "count": { "content": "$1" } }
+  },
+  "importedWithDupes": {
+    "message": "Imported $added$ games ($skipped$ duplicates skipped)",
+    "placeholders": { "added": { "content": "$1" }, "skipped": { "content": "$2" } }
+  },
+  "invalidWishlistFile": { "message": "Invalid wishlist file" },
+
+  "errorTimeout": { "message": "Request timed out. Please try again." },
+  "errorRateLimit": { "message": "API Rate Limit Reached!" },
+  "errorRateLimitDesc": { "message": "GG.deals limits anonymous requests. To fix this instantly, go to the Settings tab and add your own free API key." },
+  "errorInvalidKey": { "message": "Invalid API key. Check Settings." },
+  "errorNotFound": { "message": "Game not found on GG.deals." },
+  "errorGeneric": { "message": "Please try again." },
+  "errorEnterQuery": { "message": "Enter a Steam App ID or game name" },
+  "errorQueryTooLong": { "message": "Search query is too long" },
+  "noSearchResults": { "message": "No results found. Try a different search term." },
+
+  "emptyDashboard": { "message": "Visit a game store page to auto-detect games." },
+  "emptyDashboardHint": { "message": "Or search for a game in the Search tab." },
+
+  "themeToast": {
+    "message": "Theme: $name$",
+    "placeholders": { "name": { "content": "$1" } }
+  },
+  "accentToast": {
+    "message": "Accent: $name$",
+    "placeholders": { "name": { "content": "$1" } }
+  },
+  "settingsRegion": { "message": "Region & Currency" },
+  "prefRegion": { "message": "Default region" },
+  "prefRegionDescription": { "message": "Used for prices, bundles, overlays, and wishlist alerts. You can still override the region per-search in the Search tab." },
+  "regionToast": {
+    "message": "Default region: $region$",
+    "placeholders": { "region": { "content": "$1" } }
+  },
+  "dealScoresEnabled": { "message": "Deal Scores enabled" },
+  "dealScoresHidden": { "message": "Deal Scores hidden" },
+  "notificationsEnabled": { "message": "Notifications enabled" },
+  "notificationsDisabled": { "message": "Notifications disabled" },
+  "apiKeySaved": { "message": "API key saved" },
+  "usingDefaultKey": { "message": "Using default key" },
+  "cloudSyncEnabled": { "message": "Cloud sync enabled — data will sync across devices" },
+  "cloudSyncDisabled": { "message": "Cloud sync disabled" },
+  "cacheCleared": { "message": "Cache cleared" },
+  "priceHistoryCleared": { "message": "Price history cleared" },
+
+  "apiCallsLeft": {
+    "message": "API: $remaining$/1000 calls left",
+    "placeholders": { "remaining": { "content": "$1" } }
+  },
+  "apiCallsLeftReset": {
+    "message": "API: $remaining$/1000 calls left · resets in $mins$ min",
+    "placeholders": { "remaining": { "content": "$1" }, "mins": { "content": "$2" } }
+  },
+  "apiCallsLeftResetSoon": {
+    "message": "API: $remaining$/1000 calls left · resets in <1 min",
+    "placeholders": { "remaining": { "content": "$1" } }
+  },
+  "addKey": { "message": "Add Key" },
+  "retry": { "message": "Retry" },
+
+  "storeSteam": { "message": "Steam" },
+  "storeGgDeals": { "message": "GG.deals" },
+  "storeEpic": { "message": "Epic Games" },
+  "storeGog": { "message": "GOG" },
+  "storeHumble": { "message": "Humble Bundle" },
+  "storeFanatical": { "message": "Fanatical" },
+  "storeGmg": { "message": "GMG" },
+
+  "contextMenuLookup": { "message": "Look up game price on GG.deals" },
+  "notifPriceDrop": {
+    "message": "Price Drop: $title$",
+    "placeholders": { "title": { "content": "$1" } }
+  },
+  "notifPriceDropBody": {
+    "message": "Now $price$ $currency$ (Alert: $threshold$)",
+    "placeholders": { "price": { "content": "$1" }, "currency": { "content": "$2" }, "threshold": { "content": "$3" } }
+  },
+  "errorAuth": {
+    "message": "API authentication error ($status$). Check your API key.",
+    "placeholders": { "status": { "content": "$1" } }
+  },
+  "errorNotFoundCode": { "message": "Resource not found (404)." },
+  "errorServer": {
+    "message": "Server error ($status$)",
+    "placeholders": { "status": { "content": "$1" } }
+  },
+  "errorRequestFailed": { "message": "Request failed after retries" },
+  "errorRequestTimedOut": { "message": "Request timed out" },
+
+  "overlayBest": {
+    "message": "Best: $price$",
+    "placeholders": { "price": { "content": "$1" } }
+  },
+  "overlaySupportDevs": { "message": "Support developers — get a deal:" },
+  "overlayHistoricalLow": { "message": "Historical Low" },
+  "overlayViewOnGgDeals": { "message": "View on GG.deals →" }
+}

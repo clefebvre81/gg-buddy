@@ -22,12 +22,54 @@
     'www.wingamestore.com': detectWinGameStore,
     'www.dlgamer.com': detectDLGamer,
     'digiphile.co': detectDigiphile,
+    // Sites where we show legitimate deals to encourage buying (discourage piracy)
+    'fitgirl-repacks.site': detectGamePageSteamThenTitle,
+    'igg-games.com': detectGamePageSteamThenTitle,
+    'gog-games.com': detectGamePageSteamThenTitle,
   };
 
   // ── Steam ──────────────────────────────────────────────────────────────────
 
+  // Cached wishlist IDs (persists for the lifetime of the content script)
+  let cachedSteamWishlistIds = null;
+  let wishlistFetchInProgress = false;
+
   function detectSteamGames() {
     const path = window.location.pathname;
+
+    // Wishlist page: /wishlist/profiles/<id>/ or /wishlist/id/<name>/
+    if (path.includes('/wishlist/')) {
+      // Return cached results immediately if available
+      if (cachedSteamWishlistIds && cachedSteamWishlistIds.length > 0) {
+        return { type: 'steam_ids', ids: cachedSteamWishlistIds, store: 'steam', pageType: 'wishlist' };
+      }
+
+      // Start collecting from DOM while the full fetch runs in background
+      const domIds = collectSteamWishlistIdsFromDOM();
+
+      // Kick off the full API fetch (runs async, sends results via message)
+      if (!wishlistFetchInProgress) {
+        wishlistFetchInProgress = true;
+        fetchAllSteamWishlistIds().then((allIds) => {
+          wishlistFetchInProgress = false;
+          if (allIds.length > 0) {
+            cachedSteamWishlistIds = allIds;
+            chrome.runtime.sendMessage({
+              action: 'gamesDetected',
+              data: { type: 'steam_ids', ids: allIds, store: 'steam', pageType: 'wishlist' },
+            });
+          }
+        });
+      }
+
+      // Return whatever we have from the DOM right now (may be partial)
+      if (domIds.length > 0) {
+        return { type: 'steam_ids', ids: domIds, store: 'steam', pageType: 'wishlist' };
+      }
+
+      observeSteamWishlist();
+      return null;
+    }
 
     const singleMatch = path.match(/\/app\/(\d+)/);
     if (singleMatch) {
@@ -48,6 +90,170 @@
     }
 
     return null;
+  }
+
+  // Fetches ALL wishlist app IDs using multiple strategies, not just what's visible
+  async function fetchAllSteamWishlistIds() {
+    const ids = new Set();
+
+    // Strategy 1 (PRIMARY): Steam's dynamic store userdata endpoint
+    // Returns rgWishlist — an array of ALL wishlisted app IDs in one request
+    try {
+      const resp = await fetch('/dynamicstore/userdata/', {
+        credentials: 'include',
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.rgWishlist && Array.isArray(data.rgWishlist)) {
+          for (const appId of data.rgWishlist) {
+            if (appId && /^\d+$/.test(String(appId))) ids.add(String(appId));
+          }
+        }
+      }
+    } catch { /* endpoint may not be available */ }
+
+    if (ids.size > 0) return [...ids];
+
+    // Strategy 2: Try embedded wishlist data in the page's script tags
+    try {
+      const scripts = document.querySelectorAll('script:not([src])');
+      for (const script of scripts) {
+        const text = script.textContent || '';
+        if (text.includes('g_rgWishlistData')) {
+          const match = text.match(/g_rgWishlistData\s*=\s*(\[[\s\S]*?\]);/);
+          if (match) {
+            const data = JSON.parse(match[1]);
+            for (const item of data) {
+              const appId = String(item.appid || item.appId || item.id);
+              if (/^\d+$/.test(appId)) ids.add(appId);
+            }
+          }
+        }
+        const jsonMatch = text.match(/g_Wishlist\s*=\s*new\s+CWishlist\s*\(\s*(\[[\s\S]*?\])/);
+        if (jsonMatch) {
+          const data = JSON.parse(jsonMatch[1]);
+          for (const appId of data) {
+            if (/^\d+$/.test(String(appId))) ids.add(String(appId));
+          }
+        }
+      }
+    } catch { /* parse errors are expected */ }
+
+    if (ids.size > 0) return [...ids];
+
+    // Strategy 3: Legacy paginated wishlist API (deprecated but may still work)
+    const path = window.location.pathname;
+    const profileMatch = path.match(/\/wishlist\/profiles\/(\d+)/);
+    const vanityMatch = path.match(/\/wishlist\/id\/([^/]+)/);
+
+    if (profileMatch || vanityMatch) {
+      const base = profileMatch
+        ? `/wishlist/profiles/${profileMatch[1]}/wishlistdata/`
+        : `/wishlist/id/${vanityMatch[1]}/wishlistdata/`;
+
+      try {
+        let page = 0;
+        let consecutiveEmpty = 0;
+
+        while (page < 30) {
+          const resp = await fetch(`${base}?p=${page}`, {
+            credentials: 'include',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          });
+
+          if (!resp.ok) break;
+
+          const text = await resp.text();
+          if (!text || text.trim() === '[]' || text.trim() === '{}' || text.trim().length < 5) {
+            consecutiveEmpty++;
+            if (consecutiveEmpty >= 2) break;
+            page++;
+            continue;
+          }
+
+          const data = JSON.parse(text);
+          const pageIds = Object.keys(data).filter((k) => /^\d+$/.test(k));
+          if (pageIds.length === 0) {
+            consecutiveEmpty++;
+            if (consecutiveEmpty >= 2) break;
+            page++;
+            continue;
+          }
+
+          consecutiveEmpty = 0;
+          for (const id of pageIds) ids.add(id);
+          page++;
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      } catch { /* API might be deprecated */ }
+    }
+
+    if (ids.size > 0) return [...ids];
+
+    // Strategy 4: Fall back to DOM scraping (gets only visible items)
+    return collectSteamWishlistIdsFromDOM();
+  }
+
+  // Collects Steam App IDs from currently visible DOM elements
+  function collectSteamWishlistIdsFromDOM() {
+    const ids = new Set();
+
+    document.querySelectorAll('[data-app-id]').forEach((el) => {
+      const id = el.getAttribute('data-app-id');
+      if (id && /^\d+$/.test(id)) ids.add(id);
+    });
+
+    document.querySelectorAll('.wishlist_row').forEach((el) => {
+      const id = el.dataset.appId || el.getAttribute('data-app-id');
+      if (id && /^\d+$/.test(id)) ids.add(id);
+    });
+
+    if (ids.size === 0) {
+      const container = document.querySelector('#wishlist_items, .wishlist_items_ctn, [class*="WishlistPage"]');
+      if (container) {
+        container.querySelectorAll('a[href*="/app/"]').forEach((a) => {
+          const m = a.href.match(/\/app\/(\d+)/);
+          if (m) ids.add(m[1]);
+        });
+      }
+    }
+
+    if (ids.size === 0) {
+      extractSteamAppIdsFromLinks().forEach((id) => ids.add(id));
+    }
+
+    return [...ids];
+  }
+
+  // MutationObserver for Steam's lazy-loaded wishlist — updates detected games
+  // as new items appear when the user scrolls down
+  let steamWishlistObserver = null;
+  let steamWishlistTimer = null;
+
+  function observeSteamWishlist() {
+    if (steamWishlistObserver) return;
+
+    const target = document.querySelector('#wishlist_items, .wishlist_items_ctn, [class*="WishlistPage"]') || document.body;
+
+    steamWishlistObserver = new MutationObserver(() => {
+      if (steamWishlistTimer) clearTimeout(steamWishlistTimer);
+      steamWishlistTimer = setTimeout(() => {
+        const domIds = collectSteamWishlistIdsFromDOM();
+        // Merge with any cached API results
+        const merged = new Set(cachedSteamWishlistIds || []);
+        for (const id of domIds) merged.add(id);
+        const allIds = [...merged];
+        if (allIds.length > 0) {
+          cachedSteamWishlistIds = allIds;
+          chrome.runtime.sendMessage({
+            action: 'gamesDetected',
+            data: { type: 'steam_ids', ids: allIds, store: 'steam', pageType: 'wishlist' },
+          });
+        }
+      }, 800);
+    });
+
+    steamWishlistObserver.observe(target, { childList: true, subtree: true });
   }
 
   function extractSteamAppIdsFromDOM() {
@@ -116,6 +322,12 @@
 
   function detectEpicGames() {
     const path = window.location.pathname;
+
+    // Wishlist page: /wishlist or /en-US/wishlist
+    if (path.match(/\/wishlist\/?$/i)) {
+      return detectEpicWishlist();
+    }
+
     const titles = [];
 
     // Strategy 1: URL slug
@@ -183,6 +395,88 @@
     }
 
     return detectGenericTitles('store.epicgames.com');
+  }
+
+  function detectEpicWishlist() {
+    const titles = [];
+
+    // Epic wishlist uses card-based layout — try multiple selectors
+    const wishlistSelectors = [
+      '[data-testid="wishlist-item"] [data-testid="offer-title-info-title"]',
+      '[data-testid="wishlist-item"] h6',
+      '[data-testid="wishlist-item"] span[data-component="Message"]',
+      '.wishlist-item .product-name',
+      '[class*="WishlistItem"] [class*="Title"]',
+      '[class*="WishlistItem"] h6',
+      '[class*="wishlist"] [class*="GameTitle"]',
+    ];
+
+    for (const sel of wishlistSelectors) {
+      const collected = safeCollectTitles(sel, 200);
+      if (collected.length > 0) {
+        titles.push(...collected);
+        break;
+      }
+    }
+
+    // Fallback: grab all game card titles on the page
+    if (titles.length === 0) {
+      const cardSelectors = [
+        'a[href*="/p/"] span', 'a[href*="/p/"] h6',
+        '[data-testid="offer-title-info-title"]',
+      ];
+      for (const sel of cardSelectors) {
+        const collected = safeCollectTitles(sel, 200);
+        if (collected.length > 0) {
+          titles.push(...collected);
+          break;
+        }
+      }
+    }
+
+    // Also try document.title as a hint that we're on the wishlist
+    if (titles.length === 0) {
+      // On Epic wishlist, the page title is typically just "Wishlist"
+      // so look at the rendered card content more aggressively
+      document.querySelectorAll('a[href*="/p/"]').forEach((a) => {
+        const slug = a.href.match(/\/p\/([^/?#]+)/)?.[1];
+        if (slug) {
+          const cleaned = slug.replace(/-[a-f0-9]{6,}$/i, '');
+          const title = slugToTitle(cleaned);
+          if (title && title.length > 1 && !titles.includes(title)) titles.push(title);
+        }
+      });
+    }
+
+    if (titles.length > 0) {
+      // Start observing for lazy-loaded items
+      observeEpicWishlist();
+      return { type: 'titles', titles: titles.slice(0, 200), store: 'store.epicgames.com', pageType: 'wishlist' };
+    }
+
+    // May not have loaded yet — set up observer
+    observeEpicWishlist();
+    return null;
+  }
+
+  let epicWishlistObserver = null;
+  let epicWishlistTimer = null;
+
+  function observeEpicWishlist() {
+    if (epicWishlistObserver) return;
+
+    epicWishlistObserver = new MutationObserver(() => {
+      if (epicWishlistTimer) clearTimeout(epicWishlistTimer);
+      epicWishlistTimer = setTimeout(() => {
+        const result = detectEpicWishlist();
+        if (result && result.titles && result.titles.length > 0) {
+          chrome.runtime.sendMessage({ action: 'gamesDetected', data: result });
+        }
+      }, 1000);
+    });
+
+    const target = document.querySelector('[class*="Wishlist"], [class*="wishlist"], main, #app') || document.body;
+    epicWishlistObserver.observe(target, { childList: true, subtree: true });
   }
 
   // ── GOG ────────────────────────────────────────────────────────────────────
@@ -537,6 +831,81 @@
     return detectUniversalGame();
   }
 
+  // ── Game pages on repack/unofficial sites (show legitimate deal to discourage piracy) ──
+
+  function cleanGameTitleFromUnofficialSite(title) {
+    if (!title || typeof title !== 'string') return null;
+    let t = title
+      .replace(/\s*[-–—|]\s*(FitGirl|Fitgirl|Repack|Repacks).*$/gi, '')
+      .replace(/\s*[-–—|]\s*(IGG|IGG-Games|IGG Games).*$/gi, '')
+      .replace(/\s*[-–—|]\s*(GOG-Games|GOG Games).*$/gi, '')
+      .replace(/\s*(Free\s+)?Download\s*(PC|Full)?.*$/gi, '')
+      .replace(/\s*,?\s*V?\d+\.\d+.*$/i, '') // version numbers at end
+      .replace(/\s*[-–—|]\s*Deluxe Edition.*$/gi, '')
+      .replace(/\s*[-–—|]\s*\+?\s*\d+\s*DLCs?\/?.*$/gi, '')
+      .replace(/\s*\[[^\]]*\]\s*$/g, '')
+      .trim();
+    if (t.length < 2 || t.length > 200) return null;
+    return t;
+  }
+
+  function detectGamePageSteamThenTitle() {
+    const host = window.location.hostname;
+    const store = host;
+    const path = window.location.pathname || '';
+
+    // 1) URL slug first — no DOM dependency, so it can't fail on quirky pages (e.g. Greedfall)
+    const skipSegments = /^(games?|repack|download|category|tag|page|index|search)$/i;
+    const segments = path.split('/').filter(Boolean);
+    for (let i = segments.length - 1; i >= 0; i--) {
+      const seg = segments[i];
+      if (!seg || skipSegments.test(seg) || seg.length < 3) continue;
+      const slug = seg
+        .replace(/-repack$/i, '')
+        .replace(/-download$/i, '')
+        .replace(/-\d{4,}$/, '');
+      const fromSlug = slugToTitle(slug);
+      if (fromSlug && fromSlug.length > 2) {
+        // Return immediately with slug-based title so DOM quirks can't block detection
+        return { type: 'titles', titles: [fromSlug], store };
+      }
+    }
+
+    // 2) No usable slug — try DOM (site names must not be used as game title)
+    const siteNameTitles = /^(FitGirl Repacks?|FitGirl|IGG[- ]?Games?|GOG[- ]?Games?)$/i;
+    const titles = [];
+    const addCleaned = (raw) => {
+      const cleaned = cleanGameTitleFromUnofficialSite(raw);
+      if (cleaned && !titles.includes(cleaned) && !siteNameTitles.test(cleaned.trim())) {
+        titles.push(cleaned);
+      }
+    };
+
+    try {
+      const h1 = safeTextContent('h1');
+      if (h1) addCleaned(h1);
+      const ogTitle = document.querySelector('meta[property="og:title"]')?.content?.trim();
+      if (ogTitle) addCleaned(ogTitle);
+      const docTitle = document.title?.split(/[|–—]/)[0]?.trim();
+      if (docTitle) addCleaned(docTitle);
+      const selectors = ['.entry-title', '.post-title', '.game-title', '.title', 'h2.post-title', 'h1.title'];
+      for (const sel of selectors) {
+        const t = safeTextContent(sel);
+        if (t) addCleaned(t);
+      }
+    } catch (_) { /* DOM may throw on some pages */ }
+
+    if (titles.length > 0) {
+      return { type: 'titles', titles: titles.slice(0, 5), store };
+    }
+
+    const steamIds = extractSteamAppIdsFromLinks();
+    if (steamIds.length > 0) {
+      return { type: 'steam_ids', ids: steamIds.slice(0, 10), store };
+    }
+    return null;
+  }
+
   // ── Universal Detector (any website) ───────────────────────────────────────
 
   function detectUniversalGame() {
@@ -663,10 +1032,17 @@
 
         // Inject price overlay for single-game pages
         if (result.type === 'steam_ids' && result.ids.length === 1) {
-          injectPriceOverlay({ id: result.ids[0] });
-        } else if (result.type === 'titles' && result.titles.length <= 2) {
-          // Title-based stores (Epic, GOG, Humble, Fanatical, GMG)
-          injectPriceOverlay({ title: result.titles[0] });
+          injectPriceOverlay({ id: result.ids[0], store: result.store });
+        } else if (result.type === 'titles' && result.titles.length >= 1) {
+          // Repack/unofficial sites: always show overlay for first (page) title; others: only when 1–2 titles
+          const isRepackSite = result.store && (
+            result.store.includes('fitgirl-repacks') ||
+            result.store.includes('igg-games.com') ||
+            result.store.includes('gog-games.com')
+          );
+          if (isRepackSite || result.titles.length <= 2) {
+            injectPriceOverlay({ title: result.titles[0], store: result.store });
+          }
         }
       }
     } catch (e) {
@@ -724,9 +1100,40 @@
   // Listen for re-scan requests from the popup
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'scanPage') {
-      const detector = getDetector();
-      const result = detector ? detector() : null;
-      sendResponse(result);
+      const host = window.location.hostname;
+      const isRepackSite = host.includes('fitgirl-repacks') || host.includes('igg-games.com') || host.includes('gog-games.com');
+
+      function doScan() {
+        const detector = getDetector();
+        return detector ? detector() : null;
+      }
+
+      let result = doScan();
+      if (result) {
+        sendResponse(result);
+        return false;
+      }
+      // On repack sites, retry once after a short delay (DOM/URL may not be ready yet)
+      if (isRepackSite) {
+        setTimeout(() => {
+          result = doScan();
+          sendResponse(result);
+        }, 500);
+        return true; // keep channel open for async sendResponse
+      }
+      sendResponse(null);
+      return false;
+    }
+    if (message.action === 'getWishlistStatus') {
+      // Let the popup know about an ongoing wishlist fetch
+      const path = window.location.pathname;
+      const isWishlist = path.includes('/wishlist/');
+      sendResponse({
+        isWishlist,
+        fetchInProgress: wishlistFetchInProgress,
+        cachedCount: cachedSteamWishlistIds ? cachedSteamWishlistIds.length : 0,
+      });
+      return false;
     }
   });
 
@@ -744,9 +1151,16 @@
 
     // Check if user has overlay enabled
     try {
-      const result = await new Promise((resolve) => chrome.storage.local.get(['userPrefs'], resolve));
+      const result = await new Promise((resolve) => chrome.storage.local.get(['userPrefs', 'lastRegion'], resolve));
       const prefs = result.userPrefs || {};
       if (prefs.overlay === false) return;
+      if (!prefs.region && result.lastRegion) {
+        prefs.region = result.lastRegion;
+      }
+      if (!prefs.region) {
+        prefs.region = 'us';
+      }
+      opts.region = prefs.region;
     } catch { /* proceed */ }
 
     // Resolve: if we have a title but no id, resolve it first
@@ -755,13 +1169,13 @@
     if (!appId && opts.title) {
       try {
         const searchResp = await new Promise((resolve) =>
-          chrome.runtime.sendMessage({ action: 'searchSteam', query: opts.title, region: 'us' }, resolve)
+          chrome.runtime.sendMessage({ action: 'searchSteam', query: opts.title, region: opts.region || 'us' }, resolve)
         );
         if (searchResp && searchResp.success && searchResp.data) {
           const firstEntry = Object.entries(searchResp.data).find(([, v]) => v && v.prices);
           if (firstEntry) {
             appId = firstEntry[0];
-            renderOverlay(firstEntry[0], firstEntry[1]);
+            renderOverlay(firstEntry[0], firstEntry[1], opts.store);
             return;
           }
         }
@@ -772,13 +1186,13 @@
     if (!appId) return;
 
     // Fetch price by ID
-    chrome.runtime.sendMessage({ action: 'lookupByIds', ids: [appId], region: 'us' }, (resp) => {
+    chrome.runtime.sendMessage({ action: 'lookupByIds', ids: [appId], region: opts.region || 'us' }, (resp) => {
       if (!resp || !resp.success || !resp.data[appId]) return;
-      renderOverlay(appId, resp.data[appId]);
+      renderOverlay(appId, resp.data[appId], opts.store);
     });
   }
 
-  function renderOverlay(appId, game) {
+  function renderOverlay(appId, game, detectedStore) {
     const p = game.prices;
     if (!p) return;
 
@@ -801,20 +1215,30 @@
     const retailStr = retail !== null ? `${retail} ${currency}` : '—';
     const keyStr = keyshop !== null ? `${keyshop} ${currency}` : '—';
     const bestStr = `${best} ${currency}`;
-    const histTag = isHistLow ? '<span style="background:#048044;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:700;margin-left:8px">⭐ Historical Low</span>' : '';
+    const histTag = isHistLow ? `<span style="background:#048044;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:700;margin-left:8px">⭐ ${escapeOverlay(chrome.i18n.getMessage('overlayHistoricalLow') || 'Historical Low')}</span>` : '';
+
+    const isUnofficialPage = detectedStore && (
+      detectedStore.includes('fitgirl-repacks') ||
+      detectedStore.includes('igg-games.com') ||
+      detectedStore.includes('gog-games.com')
+    );
+    const supportLine = isUnofficialPage
+      ? `<span style="font-size:11px;color:rgba(255,255,255,0.75);margin-right:8px">${escapeOverlay(chrome.i18n.getMessage('overlaySupportDevs') || 'Support developers — get a deal:')}</span>`
+      : '';
 
     overlayEl.innerHTML = `
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;max-width:960px;margin:0 auto">
         <span style="font-weight:900;font-size:14px;color:#048044">GG.deals</span>
+        ${supportLine}
         <span style="color:rgba(255,255,255,0.5)">|</span>
         <span style="font-weight:700">${escapeOverlay(game.title || '')}</span>
         <span style="color:rgba(255,255,255,0.5)">|</span>
         <span>🏪 <b>${retailStr}</b></span>
         <span>🔑 <b>${keyStr}</b></span>
         <span style="color:rgba(255,255,255,0.5)">|</span>
-        <span style="font-weight:900;font-size:15px;color:#4ade80">Best: ${bestStr}</span>
+        <span style="font-weight:900;font-size:15px;color:#4ade80">${escapeOverlay(chrome.i18n.getMessage('overlayBest', [bestStr]) || 'Best: ' + bestStr)}</span>
         ${histTag}
-        ${game.url ? `<a href="${game.url}" target="_blank" style="color:#60a5fa;font-weight:700;font-size:12px;text-decoration:none;margin-left:auto">View on GG.deals →</a>` : ''}
+        ${game.url ? `<a href="${game.url}" target="_blank" style="color:#60a5fa;font-weight:700;font-size:12px;text-decoration:none;margin-left:auto">${escapeOverlay(chrome.i18n.getMessage('overlayViewOnGgDeals') || 'View on GG.deals →')}</a>` : ''}
         <button id="gg-overlay-close" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;padding:0 4px;margin-left:4px">✕</button>
       </div>
     `;

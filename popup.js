@@ -7,6 +7,7 @@ const detectedResults = document.getElementById('detectedResults');
 const scanBadge = document.getElementById('scanBadge');
 const toastContainer = document.getElementById('toastContainer');
 const rateLimitEl = document.getElementById('rateLimit');
+const regionSettingSelect = document.getElementById('regionSetting');
 
 let wishlist = [];
 let priceHistory = {};
@@ -22,7 +23,26 @@ let userPrefs = {
   autoCheckWishlist: false,
   checkFreq: 360,
   syncEnabled: true,
+  region: 'us',
 };
+
+// ── i18n helper ──────────────────────────────────────────────────────────────
+
+function t(key, ...subs) {
+  return chrome.i18n.getMessage(key, subs) || key;
+}
+
+function initI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const msg = chrome.i18n.getMessage(el.getAttribute('data-i18n'));
+    if (msg) el.textContent = msg;
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const msg = chrome.i18n.getMessage(el.getAttribute('data-i18n-placeholder'));
+    if (msg) el.placeholder = msg;
+  });
+}
+initI18n();
 
 // ── Utility helpers ──────────────────────────────────────────────────────────
 
@@ -51,7 +71,8 @@ function showSkeleton(container, count = 3) {
   container.innerHTML = h;
 }
 
-function showLoadingSpinner(container, text = 'Loading…') {
+function showLoadingSpinner(container, text = null) {
+  if (text === null) text = t('loading');
   container.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${escapeHtml(text)}</div></div>`;
 }
 
@@ -61,12 +82,41 @@ function updateRateLimit(info) {
   if (!rateLimitEl || !info) return;
   const r = info.remaining;
   if (r === undefined || r === null) return;
+
+  let resetText = '';
+  if (info.reset) {
+    const resetTime = info.reset * 1000;
+    const now = Date.now();
+    const diffMs = resetTime - now;
+    if (diffMs > 0) {
+      const mins = Math.ceil(diffMs / 60000);
+      resetText = mins <= 1 ? '' : '';
+    }
+  }
+
+  let apiText;
+  if (info.reset) {
+    const resetTime = info.reset * 1000;
+    const diffMs = resetTime - Date.now();
+    if (diffMs > 0) {
+      const mins = Math.ceil(diffMs / 60000);
+      apiText = mins <= 1 ? t('apiCallsLeftResetSoon', String(r)) : t('apiCallsLeftReset', String(r), String(mins));
+    } else {
+      apiText = t('apiCallsLeft', String(r));
+    }
+  } else {
+    apiText = t('apiCallsLeft', String(r));
+  }
+
   if (r < 10) {
     rateLimitEl.className = 'rate-limit low';
-    rateLimitEl.innerHTML = `⚠️ API: ${r} calls left. <a href="#" onclick="switchTab('settings')" style="color:inherit;text-decoration:underline">Add Key</a>`;
+    rateLimitEl.innerHTML = `⚠️ ${escapeHtml(apiText)}. <a href="#" onclick="switchTab('settings')" style="color:inherit;text-decoration:underline">${escapeHtml(t('addKey'))}</a>`;
+  } else if (r < 100) {
+    rateLimitEl.className = 'rate-limit warn';
+    rateLimitEl.textContent = apiText;
   } else {
     rateLimitEl.className = 'rate-limit ok';
-    rateLimitEl.textContent = `API: ${r} calls left`;
+    rateLimitEl.textContent = apiText;
   }
 }
 
@@ -99,7 +149,7 @@ function applyAllPrefs() {
 function savePrefs() {
   chrome.storage.local.set({ userPrefs });
   if (userPrefs.syncEnabled) {
-    try { chrome.storage.sync.set({ userPrefs }); } catch { /* sync might be unavailable */ }
+    try { chrome.storage.sync.set({ userPrefs }).catch(() => {}); } catch { /* sync unavailable */ }
   }
 }
 
@@ -110,7 +160,14 @@ chrome.storage.local.get(
   ['wishlist', 'priceHistory', 'notificationSettings', 'lastRegion', 'apiKey', 'contextMenuAppId', 'rateLimitInfo', 'recentSearches', 'userPrefs'],
   (localResult) => {
     if (localResult.priceHistory) priceHistory = localResult.priceHistory;
-    if (localResult.lastRegion) regionSelect.value = localResult.lastRegion;
+    if (localResult.lastRegion) {
+      regionSelect.value = localResult.lastRegion;
+      if (regionSettingSelect) regionSettingSelect.value = localResult.lastRegion;
+      userPrefs.region = localResult.lastRegion;
+    } else if (userPrefs.region) {
+      regionSelect.value = userPrefs.region;
+      if (regionSettingSelect) regionSettingSelect.value = userPrefs.region;
+    }
     if (localResult.rateLimitInfo) updateRateLimit(localResult.rateLimitInfo);
     if (localResult.recentSearches) recentSearches = localResult.recentSearches;
     if (localResult.userPrefs) userPrefs = { ...userPrefs, ...localResult.userPrefs };
@@ -193,6 +250,27 @@ function switchTab(tab) {
 
 // ── Detected games (auto-scan) ───────────────────────────────────────────────
 
+/** Parse game title from repack-site URL when content script didn't run or returned nothing */
+function parseRepackUrlGame(url) {
+  if (!url || typeof url !== 'string') return null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (!host.includes('fitgirl-repacks') && !host.includes('igg-games.com') && !host.includes('gog-games.com')) return null;
+    const path = u.pathname || '';
+    const segments = path.split('/').filter(Boolean);
+    const skip = /^(games?|repack|download|category|tag|page|index|search)$/i;
+    for (let i = segments.length - 1; i >= 0; i--) {
+      const seg = segments[i];
+      if (!seg || skip.test(seg) || seg.length < 3) continue;
+      const slug = seg.replace(/-repack$/i, '').replace(/-download$/i, '').replace(/-\d{4,}$/, '');
+      const title = slug.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+      if (title.length > 2) return { type: 'titles', titles: [title], store: host };
+    }
+  } catch (_) { }
+  return null;
+}
+
 function loadDetectedGames() {
   try {
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
@@ -207,22 +285,47 @@ function loadDetectedGames() {
         const resp = await chrome.tabs.sendMessage(tab.id, { action: 'scanPage' });
         if (resp) data = resp;
       } catch { /* content script not injected */ }
+      // Fallback: detect from URL on repack sites (works when content script isn't loaded or fails)
+      if (!data || ((!data.ids || data.ids.length === 0) && (!data.titles || data.titles.length === 0))) {
+        const urlFallback = parseRepackUrlGame(tab.url);
+        if (urlFallback) data = urlFallback;
+      }
       if (data) {
         chrome.runtime.sendMessage({ action: 'gamesDetected', data, fromPopup: true }, () => { });
       }
-      await waitForDetection(tab.id, data ? 1 : 0);
+
+      // For wishlist pages, wait for the full async fetch to complete
+      const isWishlistPage = data?.pageType === 'wishlist' || tab.url.includes('/wishlist/');
+      if (isWishlistPage) {
+        showLoadingSpinner(detectedResults, t('loadingWishlist'));
+        await waitForWishlistFetch(tab.id);
+      } else {
+        await waitForDetection(tab.id, data ? 1 : 0);
+      }
       chrome.runtime.sendMessage({ action: 'getDetectedGames', tabId: tab.id }, (resp) => {
         if (!resp || !resp.appIds || resp.appIds.length === 0) {
           showDashboard();
           return;
         }
         const storeName = formatStoreName(resp.store);
+        const isWishlist = resp.pageType === 'wishlist';
+        const totalIds = resp.appIds;
         scanBadge.style.display = '';
-        scanBadge.textContent = `${resp.appIds.length} game${resp.appIds.length > 1 ? 's' : ''} found`;
+        scanBadge.textContent = isWishlist
+          ? (totalIds.length > 1 ? t('wishlistGamesCount', String(totalIds.length)) : t('wishlistGameCount', String(totalIds.length)))
+          : (totalIds.length > 1 ? t('gamesFoundCount', String(totalIds.length)) : t('gameFoundCount', String(totalIds.length)));
         scanBadge.classList.remove('empty');
-        showLoadingSpinner(detectedResults, `Fetching prices from GG.deals…`);
+
+        // For large wishlists (50+ games), show a quick import option
+        // instead of fetching all prices first (saves API calls)
+        if (isWishlist && totalIds.length > 50) {
+          renderLargeWishlistImport(totalIds, storeName, tab.id);
+          return;
+        }
+
+        showLoadingSpinner(detectedResults, t('fetchingPrices'));
         chrome.runtime.sendMessage(
-          { action: 'lookupByIds', ids: resp.appIds, region: regionSelect.value },
+          { action: 'lookupByIds', ids: totalIds, region: regionSelect.value },
           (priceResp) => {
             if (priceResp && priceResp.rateLimit) updateRateLimit(priceResp.rateLimit);
             if (!priceResp || !priceResp.success) {
@@ -231,17 +334,16 @@ function loadDetectedGames() {
             }
             const validEntries = Object.entries(priceResp.data).filter(([, v]) => v && v.prices);
             const validCount = validEntries.length;
-            if (validCount !== resp.appIds.length) {
-              scanBadge.textContent = `${validCount} game${validCount !== 1 ? 's' : ''} found`;
+            if (validCount !== totalIds.length) {
+              scanBadge.textContent = isWishlist
+                ? (validCount !== 1 ? t('wishlistGamesCount', String(validCount)) : t('wishlistGameCount', String(validCount)))
+                : (validCount !== 1 ? t('gamesFoundCount', String(validCount)) : t('gameFoundCount', String(validCount)));
             }
             if (validCount === 0) {
-              detectedResults.innerHTML = '<div class="empty"><span class="empty-icon">🔍</span>No pricing data available for detected games</div>';
+              detectedResults.innerHTML = `<div class="empty"><span class="empty-icon">🔍</span>${escapeHtml(t('noPricingData'))}</div>`;
               return;
             }
-            let html = `<div class="detected-header"><h3>Detected on this page</h3><span class="detected-store">${escapeHtml(storeName)}</span></div>`;
-            for (const [id, game] of validEntries) html += renderGameCard(id, game);
-            detectedResults.innerHTML = html;
-            attachCardListeners(detectedResults);
+            renderDetectedResults(validEntries, isWishlist, storeName);
           }
         );
       });
@@ -249,6 +351,57 @@ function loadDetectedGames() {
   } catch (e) {
     showDashboard();
   }
+}
+
+function waitForWishlistFetch(tabId) {
+  return new Promise((resolve) => {
+    let attempts = 0;
+    let lastCount = 0;
+    let stableChecks = 0;
+
+    const check = () => {
+      // Ask the content script if the fetch is still running
+      chrome.tabs.sendMessage(tabId, { action: 'getWishlistStatus' }, (status) => {
+        if (chrome.runtime.lastError) { resolve(); return; }
+        attempts++;
+
+        // Update loading text with progress
+        const count = status?.cachedCount || 0;
+        if (count > 0) {
+          showLoadingSpinner(detectedResults, t('loadingWishlistProgress', String(count)));
+        }
+
+        // Check if fetch is done
+        if (status && !status.fetchInProgress && count > 0) {
+          // Fetch complete — send the final data to background
+          chrome.runtime.sendMessage({ action: 'getDetectedGames', tabId }, (resp) => {
+            // If background has the updated count, we're done
+            if (resp && resp.appIds && resp.appIds.length >= count * 0.9) {
+              resolve();
+            } else {
+              // Background hasn't processed yet, wait a bit
+              setTimeout(resolve, 1000);
+            }
+          });
+          return;
+        }
+
+        // Track stability — if count hasn't changed for 3 checks, fetch may be stalled
+        if (count === lastCount && count > 0) {
+          stableChecks++;
+          if (stableChecks >= 5) { resolve(); return; }
+        } else {
+          stableChecks = 0;
+          lastCount = count;
+        }
+
+        if (attempts >= 60) { resolve(); return; } // Max 60 seconds
+        setTimeout(check, 1000);
+      });
+    };
+
+    setTimeout(check, 1500); // Initial delay for fetch to start
+  });
 }
 
 function waitForDetection(tabId, expectedCount) {
@@ -268,24 +421,173 @@ function waitForDetection(tabId, expectedCount) {
 
 function showDetectedEmpty(icon, message) {
   scanBadge.style.display = '';
-  scanBadge.textContent = 'No page scanned';
+  scanBadge.textContent = t('noPageScanned');
   scanBadge.classList.add('empty');
   detectedResults.innerHTML = `<div class="empty"><span class="empty-icon">${icon}</span>${escapeHtml(message)}</div>`;
 }
 
 function formatStoreName(store) {
-  const names = { steam: 'Steam', 'gg.deals': 'GG.deals', 'store.epicgames.com': 'Epic Games', 'www.gog.com': 'GOG', 'www.humblebundle.com': 'Humble Bundle', 'www.fanatical.com': 'Fanatical', 'www.greenmangaming.com': 'GMG' };
+  const names = { steam: t('storeSteam'), 'gg.deals': t('storeGgDeals'), 'store.epicgames.com': t('storeEpic'), 'www.gog.com': t('storeGog'), 'www.humblebundle.com': t('storeHumble'), 'www.fanatical.com': t('storeFanatical'), 'www.greenmangaming.com': t('storeGmg') };
   return names[store] || store || 'Unknown';
 }
 
 function friendlyError(err) {
-  if (!err) return 'Please try again.';
+  if (!err) return escapeHtml(t('errorGeneric'));
   const lower = err.toLowerCase();
-  if (lower.includes('timeout') || lower.includes('timed out')) return 'Request timed out. Please try again.';
-  if (lower.includes('rate limit') || lower.includes('429')) return '<strong>API Rate Limit Reached!</strong><br><br>GG.deals limits anonymous requests. To fix this instantly, go to the <strong><span style="cursor:pointer;text-decoration:underline" onclick="switchTab(\'settings\')">Settings tab</span></strong> and add your own free API key.';
-  if (lower.includes('authentication') || lower.includes('401')) return 'Invalid API key. Check Settings.';
-  if (lower.includes('not found') || lower.includes('404')) return 'Game not found on GG.deals.';
-  return 'Please try again.';
+  if (lower.includes('timeout') || lower.includes('timed out')) return escapeHtml(t('errorTimeout'));
+  if (lower.includes('rate limit') || lower.includes('429')) return `<strong>${escapeHtml(t('errorRateLimit'))}</strong><br><br>${escapeHtml(t('errorRateLimitDesc'))}`;
+  if (lower.includes('authentication') || lower.includes('401')) return escapeHtml(t('errorInvalidKey'));
+  if (lower.includes('not found') || lower.includes('404')) return escapeHtml(t('errorNotFound'));
+  return escapeHtml(t('errorGeneric'));
+}
+
+// ── Large wishlist import (50+ games) ────────────────────────────────────────
+
+function renderLargeWishlistImport(allIds, storeName, tabId) {
+  const alreadyInWishlist = allIds.filter((id) => wishlist.some((w) => w.id === id));
+  const newIds = allIds.filter((id) => !wishlist.some((w) => w.id === id));
+
+  let html = `<div class="detected-header">
+    <h3>${escapeHtml(t('yourWishlist'))}</h3>
+    <span class="detected-store">${escapeHtml(storeName)}</span>
+  </div>
+  <div style="padding:12px 0">
+    <div style="font-size:0.85rem;margin-bottom:12px">
+      ${escapeHtml(t('foundGamesInWishlist', String(allIds.length)))}
+      ${alreadyInWishlist.length > 0 ? `<br><span style="color:var(--gg-text-muted)">${escapeHtml(t('alreadyTracked', String(alreadyInWishlist.length)))}</span>` : ''}
+    </div>`;
+
+  if (newIds.length > 0) {
+    html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn-sm btn-green" id="importAllWishlistBtn">${escapeHtml(t('importAllToWishlist', String(newIds.length)))}</button>
+      <button class="btn-sm btn-outline" id="previewWishlistBtn">${escapeHtml(t('previewWithPrices', String(Math.ceil(allIds.length / 100))))}</button>
+    </div>`;
+  } else {
+    html += `<div style="font-size:0.8rem;color:var(--gg-green);margin-bottom:12px">${escapeHtml(t('allAlreadyInWishlist', String(allIds.length)))}</div>
+    <button class="btn-sm btn-outline" id="previewWishlistBtn">${escapeHtml(t('viewPrices', String(Math.ceil(allIds.length / 100))))}</button>`;
+  }
+
+  html += `</div>`;
+  detectedResults.innerHTML = html;
+
+  // Import button — adds all IDs to wishlist without fetching prices
+  const importBtn = document.getElementById('importAllWishlistBtn');
+  if (importBtn) {
+    importBtn.addEventListener('click', () => {
+      let added = 0;
+      for (const id of newIds) {
+        wishlist.push({
+          id: String(id),
+          title: `Steam App ${id}`,
+          addedPrice: null,
+          addedDate: new Date().toISOString(),
+          alertEnabled: false,
+          alertThreshold: null,
+        });
+        added++;
+      }
+      saveData();
+      importBtn.disabled = true;
+      importBtn.textContent = t('importedGames', String(added));
+      importBtn.classList.remove('btn-green');
+      importBtn.classList.add('btn-outline');
+      showToast(t('importedGoToWishlist', String(added)), 'success', 4000);
+    });
+  }
+
+  // Preview button — fetches prices for all detected games
+  const previewBtn = document.getElementById('previewWishlistBtn');
+  if (previewBtn) {
+    previewBtn.addEventListener('click', () => {
+      previewBtn.disabled = true;
+      previewBtn.textContent = t('loadingPrices');
+      showLoadingSpinner(detectedResults, t('fetchingPricesCount', String(allIds.length)));
+      chrome.runtime.sendMessage(
+        { action: 'lookupByIds', ids: allIds, region: regionSelect.value },
+        (priceResp) => {
+          if (priceResp && priceResp.rateLimit) updateRateLimit(priceResp.rateLimit);
+          if (!priceResp || !priceResp.success) {
+            detectedResults.innerHTML = `<div class="error"><span class="error-icon">⚠️</span><div><div>${friendlyError(priceResp?.error)}</div><div class="error-actions"><button class="btn-sm btn-outline" data-action="retryDetected">Retry</button></div></div></div>`;
+            return;
+          }
+          const validEntries = Object.entries(priceResp.data).filter(([, v]) => v && v.prices);
+          if (validEntries.length === 0) {
+            detectedResults.innerHTML = `<div class="empty"><span class="empty-icon">🔍</span>${escapeHtml(t('noPricingDataShort'))}</div>`;
+            return;
+          }
+          // Update any imported items with real titles
+          for (const [id, game] of validEntries) {
+            const wl = wishlist.find((w) => w.id === id);
+            if (wl && wl.title.startsWith('Steam App ') && game.title) {
+              wl.title = game.title;
+              const best = getBestPrice(game.prices);
+              if (wl.addedPrice === null) { wl.addedPrice = best; wl.alertThreshold = best; }
+            }
+          }
+          saveData();
+          scanBadge.textContent = validEntries.length !== 1 ? t('wishlistGamesCount', String(validEntries.length)) : t('wishlistGameCount', String(validEntries.length));
+          renderDetectedResults(validEntries, true, storeName);
+        }
+      );
+    });
+  }
+}
+
+function renderDetectedResults(validEntries, isWishlistPage, storeName) {
+  const headerTitle = isWishlistPage ? t('yourWishlist') : t('detectedOnPage');
+
+  const notInWishlist = validEntries.filter(([id]) => !wishlist.some((w) => w.id === id));
+  const importBtnHtml = isWishlistPage && notInWishlist.length > 0
+    ? `<button class="btn-sm btn-green" id="importAllWishlistBtn">${escapeHtml(t('importToWishlist', String(notInWishlist.length)))}</button>`
+    : isWishlistPage && notInWishlist.length === 0
+      ? `<span style="font-size:0.75rem;color:var(--gg-text-muted)">${escapeHtml(t('allInWishlist'))}</span>`
+      : '';
+
+  let html = `<div class="detected-header">
+    <h3>${escapeHtml(headerTitle)}</h3>
+    <div style="display:flex;align-items:center;gap:8px">
+      ${importBtnHtml}
+      <span class="detected-store">${escapeHtml(storeName)}</span>
+    </div>
+  </div>`;
+  for (const [id, game] of validEntries) html += renderGameCard(id, game);
+  detectedResults.innerHTML = html;
+  attachCardListeners(detectedResults);
+
+  const importBtn = document.getElementById('importAllWishlistBtn');
+  if (importBtn) {
+    importBtn.addEventListener('click', () => {
+      let added = 0;
+      for (const [id, game] of validEntries) {
+        if (wishlist.some((w) => w.id === id)) continue;
+        const best = getBestPrice(game.prices);
+        wishlist.push({
+          id: String(id),
+          title: game.title || 'Unknown',
+          addedPrice: best,
+          addedDate: new Date().toISOString(),
+          alertEnabled: false,
+          alertThreshold: best,
+        });
+        added++;
+      }
+      saveData();
+      importBtn.disabled = true;
+      importBtn.textContent = t('importedGames', String(added));
+      importBtn.classList.remove('btn-green');
+      importBtn.classList.add('btn-outline');
+      showToast(t('importedToWishlist', String(added)), 'success');
+
+      detectedResults.querySelectorAll('.add-wl-btn').forEach((btn) => {
+        if (wishlist.some((w) => w.id === btn.dataset.id)) {
+          btn.textContent = `♥ ${t('wishlisted')}`;
+          btn.classList.remove('btn-green', 'add-wl-btn');
+          btn.classList.add('btn-danger', 'remove-wl-btn');
+        }
+      });
+      attachCardListeners(detectedResults);
+    });
+  }
 }
 
 // ── Smart Deal Dashboard ─────────────────────────────────────────────────────
@@ -297,21 +599,100 @@ function showDashboard() {
     detectedResults.innerHTML = `
       <div class="empty">
         <span class="empty-icon">🎮</span>
-        Visit a game store page to auto-detect games.<br>
-        Or search for a game in the Search tab.
+        ${escapeHtml(t('emptyDashboard'))}<br>
+        ${escapeHtml(t('emptyDashboardHint'))}
       </div>`;
     return;
   }
 
-  showLoadingSpinner(detectedResults, 'Building your deal dashboard…');
+  // Check rate limit before attempting to load — don't waste a call if we're at 0
+  chrome.storage.local.get(['rateLimitInfo'], (stored) => {
+    const rl = stored.rateLimitInfo;
+    if (rl && rl.remaining !== undefined && rl.remaining <= 0) {
+      renderCachedDashboard(rl);
+      return;
+    }
+    loadDashboardData();
+  });
+}
+
+function renderCachedDashboard(rl) {
+  const gamesWithPrices = wishlist.filter((w) => w.lastPrice != null);
+
+  let resetMsg = '';
+  if (rl && rl.reset) {
+    const mins = Math.ceil((rl.reset * 1000 - Date.now()) / 60000);
+    if (mins > 0) resetMsg = ' ' + t('resetsIn', String(mins));
+  }
+  if (rl) updateRateLimit(rl);
+
+  let html = `<div class="dashboard-section">
+    <div class="dashboard-section-header" style="color:var(--gg-orange)">
+      <span class="dash-icon">⏳</span> ${escapeHtml(t('rateLimitReached'))}${escapeHtml(resetMsg)}
+      <button class="btn-sm btn-outline" data-action="retryDashboard" style="margin-left:auto">${escapeHtml(t('retry'))}</button>
+    </div>
+  </div>`;
+
+  if (gamesWithPrices.length === 0) {
+    html += `<div class="empty"><span class="empty-icon">📊</span>
+      ${escapeHtml(t('noCachedData'))}<br>${escapeHtml(t('noCachedDataDesc'))}</div>`;
+    detectedResults.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="dashboard-section">
+    <div class="dashboard-section-header"><span class="dash-icon">📊</span> ${escapeHtml(t('trackedGamesOf', String(gamesWithPrices.length), String(wishlist.length)))}</div>`;
+
+  for (const g of gamesWithPrices) {
+    let statusTag = '';
+    if (g.addedPrice != null && g.lastPrice != null) {
+      const diff = g.lastPrice - g.addedPrice;
+      if (diff < -0.01) {
+        const pct = ((Math.abs(diff) / g.addedPrice) * 100).toFixed(0);
+        statusTag = `<span class="pill-badge pill-discount">▼ ${pct}%</span>`;
+      } else if (diff > 0.01) {
+        statusTag = `<span class="pill-badge pill-higher">▲ ${escapeHtml(t('pillHigher'))}</span>`;
+      } else {
+        statusTag = `<span class="pill-badge pill-same">— ${escapeHtml(t('pillSame'))}</span>`;
+      }
+    }
+
+    const imgSrc = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${g.id}/header.jpg`;
+    const priceStr = `${g.lastPrice} ${g.lastCurrency || 'USD'}`;
+
+    html += `<div class="dashboard-mini-card" data-action="searchGame" data-id="${g.id}">
+      <img class="dashboard-mini-img" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(g.title)}">
+      <div class="dashboard-mini-info">
+        <div class="dashboard-mini-title">${escapeHtml(g.title)}</div>
+        <div class="dashboard-mini-prices">
+          <div class="dashboard-mini-price">${escapeHtml(priceStr)}</div>
+        </div>
+        <div class="dashboard-mini-meta">${statusTag}</div>
+      </div>
+    </div>`;
+  }
+  html += '</div>';
+
+  detectedResults.innerHTML = html;
+}
+
+function loadDashboardData() {
+  showLoadingSpinner(detectedResults, t('buildingDashboard'));
 
   const ids = wishlist.map((w) => w.id);
   chrome.runtime.sendMessage({ action: 'lookupByIds', ids, region: regionSelect.value }, (resp) => {
     if (resp && resp.rateLimit) updateRateLimit(resp.rateLimit);
     if (!resp || !resp.success) {
+      // Fall back to cached data if available
+      const gamesWithPrices = wishlist.filter((w) => w.lastPrice != null);
+      if (gamesWithPrices.length > 0) {
+        renderCachedDashboard(resp?.rateLimit || null);
+        return;
+      }
+      const errMsg = friendlyError(resp?.error);
       detectedResults.innerHTML = `
         <div class="empty"><span class="empty-icon">⚠️</span>
-        Could not load dashboard.<br>
+        ${errMsg}<br>
         <button class="btn-sm btn-outline" data-action="retryDashboard" style="margin-top:8px">Retry</button></div>`;
       return;
     }
@@ -362,14 +743,14 @@ function showDashboard() {
     if (priceDrops.length > 0) {
       priceDrops.sort((a, b) => b.diff - a.diff);
       html += `<div class="dashboard-section">
-        <div class="dashboard-section-header"><span class="dash-icon">📉</span> Price Drops Since You Added</div>`;
+        <div class="dashboard-section-header"><span class="dash-icon">📉</span> ${escapeHtml(t('priceDropsSinceAdded'))}</div>`;
       for (const d of priceDrops.slice(0, 5)) {
         const pct = ((d.diff / d.addedPrice) * 100).toFixed(0);
         let scoreHtml = '';
         if (userPrefs.dealScores && d.score !== null) {
           scoreHtml = `
             <div class="dashboard-mini-score-col">
-              <span class="dashboard-mini-score-label">Deal Score</span>
+              <span class="dashboard-mini-score-label">${escapeHtml(t('dealScoreLabel'))}</span>
               ${dealScoreBadge(d.score)}
             </div>
           `;
@@ -393,7 +774,7 @@ function showDashboard() {
             </div>
             <div class="dashboard-mini-meta">
               <span class="pill-badge pill-discount">▼ ${pct}%</span>
-              <span style="font-size:0.65rem;color:var(--gg-text-muted)">Was ${d.addedPrice}</span>
+              <span style="font-size:0.65rem;color:var(--gg-text-muted)">${escapeHtml(t('wasPrice', String(d.addedPrice)))}</span>
             </div>
           </div>
           ${scoreHtml}
@@ -405,13 +786,13 @@ function showDashboard() {
     // Section 2: Historical Lows
     if (historicalLows.length > 0) {
       html += `<div class="dashboard-section">
-        <div class="dashboard-section-header"><span class="dash-icon">⭐</span> At Historical Low</div>`;
+        <div class="dashboard-section-header"><span class="dash-icon">⭐</span> ${escapeHtml(t('atHistoricalLow'))}</div>`;
       for (const h of historicalLows.slice(0, 5)) {
         let scoreHtml = '';
         if (userPrefs.dealScores && h.score !== null) {
           scoreHtml = `
             <div class="dashboard-mini-score-col">
-              <span class="dashboard-mini-score-label">Deal Score</span>
+              <span class="dashboard-mini-score-label">${escapeHtml(t('dealScoreLabel'))}</span>
               ${dealScoreBadge(h.score)}
             </div>
           `;
@@ -435,7 +816,7 @@ function showDashboard() {
             </div>
             <div class="dashboard-mini-meta">
               <span class="pill-badge pill-low">⭐ Low</span>
-              <span style="font-size:0.65rem;color:var(--gg-text-muted)">Hist low: ${h.histLow}</span>
+              <span style="font-size:0.65rem;color:var(--gg-text-muted)">${escapeHtml(t('histLow', String(h.histLow)))}</span>
             </div>
           </div>
           ${scoreHtml}
@@ -446,26 +827,26 @@ function showDashboard() {
 
     // Section 3: All tracked games with current prices — ALWAYS shown
     html += `<div class="dashboard-section">
-      <div class="dashboard-section-header"><span class="dash-icon">📊</span> Your Tracked Games (${allGames.length})</div>`;
+      <div class="dashboard-section-header"><span class="dash-icon">📊</span> ${escapeHtml(t('trackedGames', String(allGames.length)))}</div>`;
     for (const g of allGames) {
       let statusTag = '';
       if (g.diff && g.diff > 0) {
         const pct = ((g.diff / g.addedPrice) * 100).toFixed(0);
         statusTag = `<span class="pill-badge pill-discount">▼ ${pct}%</span>`;
       } else if (g.addedPrice != null && g.currentPrice > g.addedPrice + 0.01) {
-        statusTag = `<span class="pill-badge pill-higher">▲ Higher</span>`;
+        statusTag = `<span class="pill-badge pill-higher">▲ ${escapeHtml(t('pillHigher'))}</span>`;
       } else if (g.addedPrice != null) {
-        statusTag = `<span class="pill-badge pill-same">— Same</span>`;
+        statusTag = `<span class="pill-badge pill-same">— ${escapeHtml(t('pillSame'))}</span>`;
       }
       if (g.isHistLow) {
-        statusTag += `<span class="pill-badge pill-low">⭐ Low</span>`;
+        statusTag += `<span class="pill-badge pill-low">⭐ ${escapeHtml(t('pillLow'))}</span>`;
       }
 
       let scoreHtml = '';
       if (userPrefs.dealScores && g.score !== null) {
         scoreHtml = `
           <div class="dashboard-mini-score-col">
-            <span class="dashboard-mini-score-label">Deal Score</span>
+            <span class="dashboard-mini-score-label">${escapeHtml(t('dealScoreLabel'))}</span>
             ${dealScoreBadge(g.score)}
           </div>
         `;
@@ -480,9 +861,9 @@ function showDashboard() {
       if (retail !== null && keyshop !== null) {
         subpriceHtml = `<div class="dashboard-mini-subprice">🏪 ${retail} · 🔑 ${keyshop} ${g.currency}</div>`;
       } else if (retail !== null) {
-        subpriceHtml = `<div class="dashboard-mini-subprice">🏪 Official: ${retail} ${g.currency}</div>`;
+        subpriceHtml = `<div class="dashboard-mini-subprice">🏪 ${escapeHtml(t('official'))}: ${retail} ${g.currency}</div>`;
       } else if (keyshop !== null) {
-        subpriceHtml = `<div class="dashboard-mini-subprice">🔑 Keyshop: ${keyshop} ${g.currency}</div>`;
+        subpriceHtml = `<div class="dashboard-mini-subprice">🔑 ${escapeHtml(t('keyshop'))}: ${keyshop} ${g.currency}</div>`;
       }
 
       // Extract image URL from GG.deals API response, or fallback to exact Steam cover art
@@ -526,7 +907,7 @@ function loadRecentSearches() {
   const container = document.getElementById('recentSearchesContainer');
   if (!container) return;
   if (recentSearches.length === 0) {
-    container.innerHTML = '<div style="font-size:0.78rem;color:var(--gg-text-muted);padding:4px 0">No recent searches</div>';
+    container.innerHTML = `<div style="font-size:0.78rem;color:var(--gg-text-muted);padding:4px 0">${escapeHtml(t('noRecentSearches'))}</div>`;
     return;
   }
   let h = '';
@@ -550,11 +931,11 @@ function addRecentSearch(query) {
 async function performSearch() {
   clearTimeout(searchDebounce);
   const query = gameIdInput.value.trim();
-  if (!query) { searchResults.innerHTML = '<div class="error"><span class="error-icon">✏️</span><span>Enter a Steam App ID or game name</span></div>'; return; }
-  if (query.length > 200) { searchResults.innerHTML = '<div class="error"><span class="error-icon">⚠️</span><span>Search query is too long</span></div>'; return; }
+  if (!query) { searchResults.innerHTML = `<div class="error"><span class="error-icon">✏️</span><span>${escapeHtml(t('errorEnterQuery'))}</span></div>`; return; }
+  if (query.length > 200) { searchResults.innerHTML = `<div class="error"><span class="error-icon">⚠️</span><span>${escapeHtml(t('errorQueryTooLong'))}</span></div>`; return; }
 
   chrome.storage.local.set({ lastRegion: regionSelect.value });
-  showLoadingSpinner(searchResults, 'Searching…');
+  showLoadingSpinner(searchResults, t('searching'));
   searchBtn.disabled = true;
   addRecentSearch(query);
 
@@ -581,7 +962,7 @@ function handleSearchResponse(resp) {
   }
   const entries = Object.entries(resp.data || {}).filter(([, v]) => v && v.prices);
   if (entries.length === 0) {
-    searchResults.innerHTML = '<div class="empty"><span class="empty-icon">🔍</span>No results found. Try a different search term.</div>';
+    searchResults.innerHTML = `<div class="empty"><span class="empty-icon">🔍</span>${escapeHtml(t('noSearchResults'))}</div>`;
     return;
   }
   let html = '';
@@ -637,12 +1018,12 @@ function calculateDealScore(prices, hasBundles) {
 
 function dealScoreBadge(score) {
   if (!userPrefs.dealScores || score === null) return '';
-  let cls = 'score-wait', label = 'Wait';
-  if (score >= 86) { cls = 'score-amazing'; label = 'Amazing'; }
-  else if (score >= 61) { cls = 'score-good'; label = 'Good'; }
-  else if (score >= 31) { cls = 'score-ok'; label = 'OK'; }
-  return `<div class="deal-score ${cls}" title="Deal Score: ${score}/100 — ${label}">
-    ${score}<span class="deal-score-label">${label}</span></div>`;
+  let cls = 'score-wait', label = t('dealScoreWait');
+  if (score >= 86) { cls = 'score-amazing'; label = t('dealScoreAmazing'); }
+  else if (score >= 61) { cls = 'score-good'; label = t('dealScoreGood'); }
+  else if (score >= 31) { cls = 'score-ok'; label = t('dealScoreOk'); }
+  return `<div class="deal-score ${cls}" title="${escapeHtml(t('dealScoreTitle', String(score), label))}">
+    ${score}<span class="deal-score-label">${escapeHtml(label)}</span></div>`;
 }
 
 // ── Render game card ─────────────────────────────────────────────────────────
@@ -672,21 +1053,21 @@ function renderGameCard(id, game) {
     if (value === null || value === undefined) return `<div class="price-col"><div class="price-col-label">${label}</div><div class="price-col-value na">—</div></div>`;
     let badges = '';
     if (discPct) badges += `<span class="discount-badge">-${discPct}%</span>`;
-    if (isBest) badges += `<span class="best-deal-tag">Best deal</span>`;
+    if (isBest) badges += `<span class="best-deal-tag">${escapeHtml(t('bestDeal'))}</span>`;
     return `<div class="price-col"><div class="price-col-label">${label}</div><div class="price-col-value has-price">${value} ${currency}${badges}</div></div>`;
   }
 
   let histHtml = '';
   if (histRetail !== null || histKey !== null) {
     histHtml = `<div class="historical-row">
-      <div class="hist-col"><div class="hist-label">Historical Low (Retail)</div><div class="hist-value${histRetail === null ? ' na' : ''}">${histRetail !== null ? histRetail + ' ' + currency : '—'}</div></div>
-      <div class="hist-col"><div class="hist-label">Historical Low (Keyshop)</div><div class="hist-value${histKey === null ? ' na' : ''}">${histKey !== null ? histKey + ' ' + currency : '—'}</div></div>
+      <div class="hist-col"><div class="hist-label">${escapeHtml(t('historicalLowRetail'))}</div><div class="hist-value${histRetail === null ? ' na' : ''}">${histRetail !== null ? histRetail + ' ' + currency : '—'}</div></div>
+      <div class="hist-col"><div class="hist-label">${escapeHtml(t('historicalLowKeyshop'))}</div><div class="hist-value${histKey === null ? ' na' : ''}">${histKey !== null ? histKey + ' ' + currency : '—'}</div></div>
     </div>`;
   }
 
   const isHistLow = (histRetail !== null && currentRetail !== null && currentRetail <= histRetail) ||
     (histKey !== null && currentKey !== null && currentKey <= histKey);
-  const histLowTag = isHistLow ? '<div class="historical-low-tag">⭐ At historical low!</div>' : '';
+  const histLowTag = isHistLow ? `<div class="historical-low-tag">⭐ ${escapeHtml(t('atHistoricalLowTag'))}</div>` : '';
 
   const history = priceHistory[id] || [];
   const chartHtml = history.length > 1 ? generateChart(history, currency) : '';
@@ -705,18 +1086,18 @@ function renderGameCard(id, game) {
           ${dealScoreBadge(score)}
         </div>
         <div class="price-section">
-          ${priceCol('Official Stores', p.currentRetail, retailDiscount, !bestDealIsKey && retailDiscount)}
-          ${priceCol('Keyshops', p.currentKeyshops, keyDiscount, bestDealIsKey)}
+          ${priceCol(t('officialStores'), p.currentRetail, retailDiscount, !bestDealIsKey && retailDiscount)}
+          ${priceCol(t('keyshops'), p.currentKeyshops, keyDiscount, bestDealIsKey)}
         </div>
         ${histHtml}${histLowTag}${chartHtml}
       </div>
     </div>
     <div class="game-actions">
       <button class="btn-sm ${inWishlist ? 'btn-danger remove-wl-btn' : 'btn-green add-wl-btn'}" data-id="${id}" data-title="${escapeAttr(game.title || '')}" data-price="${getBestPrice(p) || ''}">
-        ${inWishlist ? '♥ Wishlisted' : '♡ Wishlist'}
+        ${inWishlist ? `♥ ${escapeHtml(t('wishlisted'))}` : `♡ ${escapeHtml(t('wishlistBtn'))}`}
       </button>
-      <button class="btn-sm btn-outline bundle-btn" data-id="${id}">📦 Bundles</button>
-      ${game.url ? `<a class="game-link" href="${game.url}" target="_blank" rel="noopener">View on GG.deals →</a>` : ''}
+      <button class="btn-sm btn-outline bundle-btn" data-id="${id}">📦 ${escapeHtml(t('bundlesBtn'))}</button>
+      ${game.url ? `<a class="game-link" href="${game.url}" target="_blank" rel="noopener">${escapeHtml(t('viewOnGgDeals'))}</a>` : ''}
     </div>
     <div class="bundle-container" id="bundleContainer_${id}"></div>
   </div>`;
@@ -732,7 +1113,7 @@ function generateChart(history, currency) {
     const pct = ((h.price - min) / range) * 100;
     bars += `<div class="chart-bar" style="height:${Math.max(pct, 8)}%" title="${h.price} ${currency}"></div>`;
   }
-  return `<div class="chart-container"><div class="chart-label">Price History</div><div class="chart-bars">${bars}</div><div class="chart-range">${min} — ${max} ${currency}</div></div>`;
+  return `<div class="chart-container"><div class="chart-label">${escapeHtml(t('priceHistory'))}</div><div class="chart-bars">${bars}</div><div class="chart-range">${min} — ${max} ${currency}</div></div>`;
 }
 
 // ── Card event listeners ─────────────────────────────────────────────────────
@@ -741,19 +1122,19 @@ function attachCardListeners(container) {
   container.querySelectorAll('.add-wl-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       addToWishlist(btn.dataset.id, btn.dataset.title, parseFloat(btn.dataset.price) || null);
-      btn.textContent = '♥ Wishlisted';
+      btn.textContent = `♥ ${t('wishlisted')}`;
       btn.classList.remove('btn-green', 'add-wl-btn');
       btn.classList.add('btn-danger', 'remove-wl-btn');
-      showToast(`${btn.dataset.title} added to wishlist`, 'success');
+      showToast(t('addedToWishlist', btn.dataset.title), 'success');
     });
   });
   container.querySelectorAll('.remove-wl-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       removeFromWishlist(btn.dataset.id);
-      btn.textContent = '♡ Wishlist';
+      btn.textContent = `♡ ${t('wishlistBtn')}`;
       btn.classList.remove('btn-danger', 'remove-wl-btn');
       btn.classList.add('btn-green', 'add-wl-btn');
-      showToast(`Removed from wishlist`, 'info');
+      showToast(t('removedFromWishlist'), 'info');
     });
   });
   container.querySelectorAll('.bundle-btn').forEach((btn) => {
@@ -765,14 +1146,14 @@ function attachCardListeners(container) {
       bc.innerHTML = '<div class="loading" style="padding:8px"><div class="spinner"></div></div>';
       chrome.runtime.sendMessage({ action: 'getBundles', ids: [id], region: regionSelect.value }, (resp) => {
         if (!resp || !resp.success || !resp.data?.[id]?.bundles?.length) {
-          bc.innerHTML = '<div style="font-size:0.78rem;color:var(--gg-text-muted);padding:8px 0">No active bundles for this game</div>';
+          bc.innerHTML = `<div style="font-size:0.78rem;color:var(--gg-text-muted);padding:8px 0">${escapeHtml(t('noActiveBundlesGame'))}</div>`;
           return;
         }
         let h = '';
         for (const b of resp.data[id].bundles.slice(0, 3)) {
           h += `<div class="bundle-card"><div class="bundle-title">${escapeHtml(b.title)}</div>`;
-          for (const t of b.tiers) h += `<div class="bundle-tier"><span class="bundle-price">${t.price} ${t.currency}</span> · ${t.gamesCount || '?'} games</div>`;
-          if (b.url) h += `<a class="game-link" href="${b.url}" target="_blank" rel="noopener" style="display:block;margin-top:4px">View bundle →</a>`;
+          for (const tr of b.tiers) h += `<div class="bundle-tier"><span class="bundle-price">${tr.price} ${tr.currency}</span> · ${tr.gamesCount || '?'} ${t('games')}</div>`;
+          if (b.url) h += `<a class="game-link" href="${b.url}" target="_blank" rel="noopener" style="display:block;margin-top:4px">${escapeHtml(t('viewBundle'))}</a>`;
           h += '</div>';
         }
         bc.innerHTML = h;
@@ -787,7 +1168,7 @@ let bundlesLoaded = false;
 function loadActiveBundles() {
   const container = document.getElementById('bundlesContent');
   if (bundlesLoaded && container.innerHTML.trim()) return;
-  showLoadingSpinner(container, 'Loading active bundles…');
+  showLoadingSpinner(container, t('loadingBundles'));
   chrome.runtime.sendMessage({ action: 'getActiveBundles', region: regionSelect.value }, (resp) => {
     if (resp && resp.rateLimit) updateRateLimit(resp.rateLimit);
     if (!resp || !resp.success) {
@@ -796,15 +1177,15 @@ function loadActiveBundles() {
     }
     const bundles = resp.data || [];
     if (bundles.length === 0) {
-      container.innerHTML = '<div class="empty"><span class="empty-icon">📦</span>No active bundles right now</div>';
+      container.innerHTML = `<div class="empty"><span class="empty-icon">📦</span>${escapeHtml(t('noActiveBundlesNow'))}</div>`;
       return;
     }
-    let h = `<div class="section-label" style="margin-bottom:10px">${bundles.length} Active Bundle${bundles.length !== 1 ? 's' : ''}</div>`;
+    let h = `<div class="section-label" style="margin-bottom:10px">${escapeHtml(bundles.length !== 1 ? t('activeBundlesCount', String(bundles.length)) : t('activeBundleCount', String(bundles.length)))}</div>`;
     for (const b of bundles) {
       let expiryHtml = '';
       if (b.dateTo) {
         const days = Math.ceil((new Date(b.dateTo + ' UTC') - new Date()) / 86400000);
-        if (days > 0) expiryHtml = `<div class="bundle-expiry">⏰ ${days} day${days !== 1 ? 's' : ''} left</div>`;
+        if (days > 0) expiryHtml = `<div class="bundle-expiry">⏰ ${escapeHtml(days !== 1 ? t('daysLeft', String(days)) : t('dayLeft', String(days)))}</div>`;
       }
 
       // The API embeds the store name in the title: "Fanatical - Build your own bundle"
@@ -853,10 +1234,10 @@ function loadActiveBundles() {
             <div class="active-bundle-header"><div class="active-bundle-title" style="margin-right:8px">${escapeHtml(bundleTitle)}</div>${storeBadgeHtml}</div>
             <div class="active-bundle-tiers">`;
 
-      if (b.tiers) for (const t of b.tiers) h += `<div class="bundle-tier"><span class="bundle-price">${t.price} ${t.currency}</span> · ${t.gamesCount || '?'} game${(t.gamesCount || 0) > 1 ? 's' : ''}</div>`;
+      if (b.tiers) for (const tr of b.tiers) h += `<div class="bundle-tier"><span class="bundle-price">${tr.price} ${tr.currency}</span> · ${tr.gamesCount || '?'} ${(tr.gamesCount || 0) > 1 ? t('games') : t('game')}</div>`;
 
       h += `</div>${expiryHtml}`;
-      if (b.url) h += `<a class="game-link" href="${b.url}" target="_blank" rel="noopener" style="display:block;margin-top:6px">View bundle →</a>`;
+      if (b.url) h += `<a class="game-link" href="${b.url}" target="_blank" rel="noopener" style="display:block;margin-top:6px">${escapeHtml(t('viewBundle'))}</a>`;
       h += `</div>
         </div>
       </div>`;
@@ -886,16 +1267,16 @@ function displayWishlist() {
 
   if (wishlist.length === 0) {
     headerEl.innerHTML = '';
-    el.innerHTML = '<div class="empty"><span class="empty-icon">♡</span>No games in your wishlist yet.<br>Add games from the Detected or Search tabs.</div>';
+    el.innerHTML = `<div class="empty"><span class="empty-icon">♡</span>${escapeHtml(t('noWishlistGames'))}<br>${escapeHtml(t('noWishlistGamesHint'))}</div>`;
     return;
   }
 
   headerEl.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:6px;flex-wrap:wrap">
-    <div class="section-label" style="margin-bottom:0">Your Wishlist (${wishlist.length})</div>
+    <div class="section-label" style="margin-bottom:0">${escapeHtml(t('yourWishlistCount', String(wishlist.length)))}</div>
     <div style="display:flex;gap:6px">
-      <button class="btn-sm btn-outline" id="exportWlBtn">📤 Export</button>
-      <button class="btn-sm btn-outline" id="importWlBtn">📥 Import</button>
-      <button class="btn-sm btn-green" id="checkAllPricesBtn">Check All Prices</button>
+      <button class="btn-sm btn-outline" id="exportWlBtn">📤 ${escapeHtml(t('exportBtn'))}</button>
+      <button class="btn-sm btn-outline" id="importWlBtn">📥 ${escapeHtml(t('importBtn'))}</button>
+      <button class="btn-sm btn-green" id="checkAllPricesBtn">${escapeHtml(t('checkAllPrices'))}</button>
     </div>
   </div>`;
 
@@ -912,9 +1293,9 @@ function displayWishlist() {
         <img class="wishlist-img" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(item.title)}">
         <div class="wishlist-header-info">
           <div class="wishlist-title">${escapeHtml(item.title)}</div>
-          <div class="wishlist-meta"><span>Added ${dateStr}</span>${item.addedPrice != null ? `<span>at <span class="price-at">${item.addedPrice}</span></span>` : ''}</div>
+          <div class="wishlist-meta"><span>${escapeHtml(t('addedOn', dateStr))}</span>${item.addedPrice != null ? `<span>${escapeHtml(t('atPrice', String(item.addedPrice)))}</span>` : ''}</div>
         </div>
-        <div class="wishlist-price-badge ${lastKnown ? '' : 'unknown'}" id="wlPrice_${item.id}">${lastKnown || 'Click to check'}</div>
+        <div class="wishlist-price-badge ${lastKnown ? '' : 'unknown'}" id="wlPrice_${item.id}">${lastKnown || escapeHtml(t('clickToCheck'))}</div>
         <div class="wishlist-expand-icon">▼</div>
       </div>
       <div class="wishlist-detail"><div class="wishlist-detail-inner" id="wlDetail_${item.id}">
@@ -939,12 +1320,13 @@ function displayWishlist() {
   // Check All
   document.getElementById('checkAllPricesBtn')?.addEventListener('click', () => {
     const btn = document.getElementById('checkAllPricesBtn');
-    btn.disabled = true; btn.textContent = 'Checking…';
+    btn.disabled = true; btn.textContent = t('checking');
     chrome.runtime.sendMessage({ action: 'lookupByIds', ids: wishlist.map((w) => w.id), region: regionSelect.value }, (resp) => {
-      btn.disabled = false; btn.textContent = 'Check All Prices';
+      btn.disabled = false; btn.textContent = t('checkAllPrices');
       if (resp?.rateLimit) updateRateLimit(resp.rateLimit);
       if (resp?.success) {
         let n = 0;
+        let titlesUpdated = 0;
         for (const [id, game] of Object.entries(resp.data)) {
           if (!game?.prices) continue;
           n++;
@@ -953,11 +1335,25 @@ function displayWishlist() {
           const badge = document.getElementById(`wlPrice_${id}`);
           if (badge && best !== null) { badge.textContent = `${best} ${cur}`; badge.classList.remove('unknown'); }
           const w = wishlist.find((w) => w.id === id);
-          if (w) { w.lastPrice = best; w.lastCurrency = cur; }
+          if (w) {
+            w.lastPrice = best;
+            w.lastCurrency = cur;
+            // Update placeholder titles with real game names from GG.deals
+            if (game.title && (w.title.startsWith('Steam App ') || w.title === 'Unknown')) {
+              w.title = game.title;
+              titlesUpdated++;
+            }
+            if (w.addedPrice === null && best !== null) {
+              w.addedPrice = best;
+              w.alertThreshold = best;
+            }
+          }
         }
         saveData();
-        showToast(`Prices updated for ${n} games`, 'success');
-      } else showToast('Failed to check prices', 'error');
+        showToast(titlesUpdated > 0 ? t('pricesUpdatedTitles', String(n), String(titlesUpdated)) : t('pricesUpdated', String(n)), 'success');
+        // Re-render the wishlist to show updated titles
+        if (titlesUpdated > 0) displayWishlist();
+      } else showToast(t('failedCheckPrices'), 'error');
     });
   });
 
@@ -998,14 +1394,28 @@ function loadWishlistItemDetail(id) {
     if (badge && best !== null) { badge.textContent = `${best} ${currency}`; badge.classList.remove('unknown'); }
 
     const wl = wishlist.find((w) => w.id === id);
-    if (wl) { wl.lastPrice = best; wl.lastCurrency = currency; saveData(); }
+    if (wl) {
+      wl.lastPrice = best;
+      wl.lastCurrency = currency;
+      if (game.title && (wl.title.startsWith('Steam App ') || wl.title === 'Unknown')) {
+        wl.title = game.title;
+        // Update the title in the header too
+        const titleEl = document.querySelector(`.wishlist-item[data-wl-id="${id}"] .wishlist-title`);
+        if (titleEl) titleEl.textContent = game.title;
+      }
+      if (wl.addedPrice === null && best !== null) {
+        wl.addedPrice = best;
+        wl.alertThreshold = best;
+      }
+      saveData();
+    }
 
     let changeHtml = '';
     if (wl?.addedPrice != null && best !== null) {
       const diff = best - wl.addedPrice;
-      if (diff < -0.01) changeHtml = `<span class="wishlist-price-change down">▼ ${Math.abs(diff).toFixed(2)} lower</span>`;
-      else if (diff > 0.01) changeHtml = `<span class="wishlist-price-change up">▲ ${diff.toFixed(2)} higher</span>`;
-      else changeHtml = `<span class="wishlist-price-change same">— Same price</span>`;
+      if (diff < -0.01) changeHtml = `<span class="wishlist-price-change down">▼ ${escapeHtml(t('lowerBy', Math.abs(diff).toFixed(2)))}</span>`;
+      else if (diff > 0.01) changeHtml = `<span class="wishlist-price-change up">▲ ${escapeHtml(t('higherBy', diff.toFixed(2)))}</span>`;
+      else changeHtml = `<span class="wishlist-price-change same">— ${escapeHtml(t('samePrice'))}</span>`;
     }
 
     let retailDisc = '', keyDisc = '', bestIsKey = false;
@@ -1014,13 +1424,13 @@ function loadWishlistItemDetail(id) {
 
     const pc = (lbl, val, disc, isBest) => {
       if (val == null) return `<div class="price-col"><div class="price-col-label">${lbl}</div><div class="price-col-value na">—</div></div>`;
-      let b = ''; if (disc) b += `<span class="discount-badge">-${disc}%</span>`; if (isBest) b += `<span class="best-deal-tag">Best deal</span>`;
+      let b = ''; if (disc) b += `<span class="discount-badge">-${disc}%</span>`; if (isBest) b += `<span class="best-deal-tag">${escapeHtml(t('bestDeal'))}</span>`;
       return `<div class="price-col"><div class="price-col-label">${lbl}</div><div class="price-col-value has-price">${val} ${currency}${b}</div></div>`;
     };
 
     let histHtml = '';
     if (histRetail !== null || histKey !== null) {
-      histHtml = `<div class="historical-row"><div class="hist-col"><div class="hist-label">Historical Low (Retail)</div><div class="hist-value${histRetail === null ? ' na' : ''}">${histRetail != null ? histRetail + ' ' + currency : '—'}</div></div><div class="hist-col"><div class="hist-label">Historical Low (Keyshop)</div><div class="hist-value${histKey === null ? ' na' : ''}">${histKey != null ? histKey + ' ' + currency : '—'}</div></div></div>`;
+      histHtml = `<div class="historical-row"><div class="hist-col"><div class="hist-label">${escapeHtml(t('historicalLowRetail'))}</div><div class="hist-value${histRetail === null ? ' na' : ''}">${histRetail != null ? histRetail + ' ' + currency : '—'}</div></div><div class="hist-col"><div class="hist-label">${escapeHtml(t('historicalLowKeyshop'))}</div><div class="hist-value${histKey === null ? ' na' : ''}">${histKey != null ? histKey + ' ' + currency : '—'}</div></div></div>`;
     }
 
     const score = calculateDealScore(p, false);
@@ -1028,18 +1438,18 @@ function loadWishlistItemDetail(id) {
 
     detailEl.innerHTML = `<div style="padding-top:10px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">${changeHtml}${dealScoreBadge(score)}</div>
-      <div class="price-section">${pc('Official Stores', p.currentRetail, retailDisc, !bestIsKey && retailDisc)}${pc('Keyshops', p.currentKeyshops, keyDisc, bestIsKey)}</div>
+      <div class="price-section">${pc(t('officialStores'), p.currentRetail, retailDisc, !bestIsKey && retailDisc)}${pc(t('keyshops'), p.currentKeyshops, keyDisc, bestIsKey)}</div>
       ${histHtml}
       <div class="wishlist-alert-row">
         <input type="checkbox" class="toggle-switch" id="wlAlert_${id}" ${wl?.alertEnabled ? 'checked' : ''} />
-        <label for="wlAlert_${id}" style="cursor:pointer">Alert below</label>
+        <label for="wlAlert_${id}" style="cursor:pointer">${escapeHtml(t('alertBelow'))}</label>
         <input type="number" id="wlThreshold_${id}" value="${threshold}" step="0.01" min="0" placeholder="Price" />
         <span style="color:var(--gg-text-muted);font-size:0.72rem">${currency}</span>
       </div>
       <div class="wishlist-actions">
-        <button class="btn-sm btn-outline" id="wlBundleBtn_${id}">📦 Bundles</button>
-        ${game.url ? `<a class="game-link" href="${game.url}" target="_blank" rel="noopener">View on GG.deals →</a>` : ''}
-        <button class="btn-sm btn-danger" style="margin-left:auto" data-action="removeWishlist" data-id="${id}">✕ Remove</button>
+        <button class="btn-sm btn-outline" id="wlBundleBtn_${id}">📦 ${escapeHtml(t('bundlesBtn'))}</button>
+        ${game.url ? `<a class="game-link" href="${game.url}" target="_blank" rel="noopener">${escapeHtml(t('viewOnGgDeals'))}</a>` : ''}
+        <button class="btn-sm btn-danger" style="margin-left:auto" data-action="removeWishlist" data-id="${id}">✕ ${escapeHtml(t('removeBtn'))}</button>
       </div>
       <div id="wlBundleContainer_${id}"></div>
     </div>`;
@@ -1052,12 +1462,12 @@ function loadWishlistItemDetail(id) {
       if (c.innerHTML.trim()) { c.innerHTML = ''; return; }
       c.innerHTML = '<div class="loading" style="padding:8px"><div class="spinner"></div></div>';
       chrome.runtime.sendMessage({ action: 'getBundles', ids: [id], region: regionSelect.value }, (bR) => {
-        if (!bR?.success || !bR.data?.[id]?.bundles?.length) { c.innerHTML = '<div style="font-size:0.78rem;color:var(--gg-text-muted);padding:8px 0">No active bundles</div>'; return; }
+        if (!bR?.success || !bR.data?.[id]?.bundles?.length) { c.innerHTML = `<div style="font-size:0.78rem;color:var(--gg-text-muted);padding:8px 0">${escapeHtml(t('noActiveBundles'))}</div>`; return; }
         let h = '';
         for (const b of bR.data[id].bundles.slice(0, 3)) {
           h += `<div class="bundle-card"><div class="bundle-title">${escapeHtml(b.title)}</div>`;
-          for (const t of b.tiers) h += `<div class="bundle-tier"><span class="bundle-price">${t.price} ${t.currency}</span></div>`;
-          if (b.url) h += `<a class="game-link" href="${b.url}" target="_blank" rel="noopener">View →</a>`;
+          for (const tr of b.tiers) h += `<div class="bundle-tier"><span class="bundle-price">${tr.price} ${tr.currency}</span></div>`;
+          if (b.url) h += `<a class="game-link" href="${b.url}" target="_blank" rel="noopener">${escapeHtml(t('viewArrow'))}</a>`;
           h += '</div>';
         }
         c.innerHTML = h;
@@ -1069,12 +1479,12 @@ function loadWishlistItemDetail(id) {
 function saveWishlistAlert(id) {
   const w = wishlist.find((w) => w.id === id);
   if (!w) return;
-  const t = document.getElementById(`wlAlert_${id}`);
-  const i = document.getElementById(`wlThreshold_${id}`);
-  if (t) w.alertEnabled = t.checked;
-  if (i) w.alertThreshold = parseFloat(i.value) || 0;
+  const chk = document.getElementById(`wlAlert_${id}`);
+  const inp = document.getElementById(`wlThreshold_${id}`);
+  if (chk) w.alertEnabled = chk.checked;
+  if (inp) w.alertThreshold = parseFloat(inp.value) || 0;
   saveData();
-  showToast(t?.checked ? 'Alert enabled' : 'Alert disabled', 'success');
+  showToast(chk?.checked ? t('alertEnabled') : t('alertDisabled'), 'success');
 }
 
 function getBestPrice(prices) {
@@ -1089,7 +1499,7 @@ window.removeWishlistItem = function (id) {
   const item = wishlist.find((w) => w.id === id);
   removeFromWishlist(id);
   displayWishlist();
-  if (item) showToast(`${item.title} removed`, 'info');
+  if (item) showToast(t('removed', item.title), 'info');
 };
 
 // ── Wishlist Export / Import ─────────────────────────────────────────────────
@@ -1102,7 +1512,7 @@ function exportWishlist() {
   a.href = url; a.download = `gg-deals-wishlist-${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast(`Exported ${wishlist.length} games`, 'success');
+  showToast(t('exportedGames', String(wishlist.length)), 'success');
 }
 
 function importWishlist(e) {
@@ -1127,9 +1537,9 @@ function importWishlist(e) {
       }
       saveData();
       displayWishlist();
-      showToast(`Imported ${added} games (${items.length - added} duplicates skipped)`, 'success');
+      showToast(t('importedWithDupes', String(added), String(items.length - added)), 'success');
     } catch (err) {
-      showToast('Invalid wishlist file', 'error');
+      showToast(t('invalidWishlistFile'), 'error');
     }
     e.target.value = '';
   };
@@ -1149,6 +1559,9 @@ function displaySettings() {
   document.getElementById('autoCheckWishlist').checked = userPrefs.autoCheckWishlist;
   document.getElementById('syncEnabled').checked = userPrefs.syncEnabled !== false;
   document.getElementById('checkFreq').value = String(userPrefs.checkFreq || 360);
+  if (regionSettingSelect) {
+    regionSettingSelect.value = userPrefs.region || 'us';
+  }
 
   chrome.storage.local.get(['priceCache'], (r) => {
     document.getElementById('cacheCount').textContent = Object.keys(r.priceCache || {}).length;
@@ -1178,7 +1591,7 @@ function wireSettings() {
       applyTheme(userPrefs.theme);
       document.querySelectorAll('#themePicker .theme-opt').forEach((b) => b.classList.toggle('active', b === btn));
       savePrefs();
-      showToast(`Theme: ${btn.textContent.trim()}`, 'info');
+      showToast(t('themeToast', btn.textContent.trim()), 'info');
     });
   });
 
@@ -1189,7 +1602,7 @@ function wireSettings() {
       applyAccent(userPrefs.accent);
       document.querySelectorAll('#accentPicker .accent-opt').forEach((o) => o.classList.toggle('active', o === opt));
       savePrefs();
-      showToast(`Accent: ${opt.title}`, 'info');
+      showToast(t('accentToast', opt.title), 'info');
     });
   });
 
@@ -1202,7 +1615,7 @@ function wireSettings() {
   document.getElementById('dealScoresEnabled').addEventListener('change', (e) => {
     userPrefs.dealScores = e.target.checked;
     savePrefs();
-    showToast(e.target.checked ? 'Deal Scores enabled' : 'Deal Scores hidden', 'info');
+    showToast(e.target.checked ? t('dealScoresEnabled') : t('dealScoresHidden'), 'info');
   });
   document.getElementById('overlayEnabled').addEventListener('change', (e) => {
     userPrefs.overlay = e.target.checked;
@@ -1217,19 +1630,32 @@ function wireSettings() {
     savePrefs();
   });
 
+  // Default region / currency
+  if (regionSettingSelect) {
+    regionSettingSelect.addEventListener('change', (e) => {
+      const region = e.target.value || 'us';
+      userPrefs.region = region;
+      // Keep search tab selector in sync
+      if (regionSelect) regionSelect.value = region;
+      chrome.storage.local.set({ lastRegion: region });
+      savePrefs();
+      showToast(t('regionToast', region.toUpperCase()), 'info');
+    });
+  }
+
   // Notification toggle
   document.getElementById('notifEnabled').addEventListener('change', (e) => {
     notificationSettings.enabled = e.target.checked;
     saveData();
-    showToast(e.target.checked ? 'Notifications enabled' : 'Notifications disabled', 'info');
+    showToast(e.target.checked ? t('notificationsEnabled') : t('notificationsDisabled'), 'info');
   });
 
   // API Key
   document.getElementById('apiKeyInput').addEventListener('change', (e) => {
     const key = e.target.value.trim();
     chrome.storage.local.set({ apiKey: key || null });
-    if (userPrefs.syncEnabled) { try { chrome.storage.sync.set({ apiKey: key || null }); } catch { } }
-    showToast(key ? 'API key saved' : 'Using default key', 'success');
+    if (userPrefs.syncEnabled) { try { chrome.storage.sync.set({ apiKey: key || null }).catch(() => {}); } catch { } }
+    showToast(key ? t('apiKeySaved') : t('usingDefaultKey'), 'success');
   });
 
   // Sync toggle
@@ -1238,9 +1664,9 @@ function wireSettings() {
     savePrefs();
     if (e.target.checked) {
       saveData(); // Push current data to sync
-      showToast('Cloud sync enabled — data will sync across devices', 'success');
+      showToast(t('cloudSyncEnabled'), 'success');
     } else {
-      showToast('Cloud sync disabled', 'info');
+      showToast(t('cloudSyncDisabled'), 'info');
     }
   });
 
@@ -1248,7 +1674,7 @@ function wireSettings() {
   document.getElementById('clearCacheBtn').addEventListener('click', () => {
     chrome.storage.local.remove(['priceCache']);
     document.getElementById('cacheCount').textContent = '0';
-    showToast('Cache cleared', 'success');
+    showToast(t('cacheCleared'), 'success');
   });
 
   // Clear history
@@ -1256,7 +1682,7 @@ function wireSettings() {
     priceHistory = {};
     chrome.storage.local.set({ priceHistory: {} });
     document.getElementById('historyCount').textContent = '0';
-    showToast('Price history cleared', 'success');
+    showToast(t('priceHistoryCleared'), 'success');
   });
 }
 wireSettings();
@@ -1290,18 +1716,16 @@ function saveData() {
   // Local: everything (fast, no size limit)
   chrome.storage.local.set({ wishlist, priceHistory, notificationSettings });
 
-  // Sync: wishlist + notification settings (cross-device, 100KB limit)
+  // Sync: only small data (chrome.storage.sync has 8KB per-item limit)
   if (userPrefs.syncEnabled) {
     try {
-      // chrome.storage.sync has 8KB per-item limit, chunk wishlist if large
+      chrome.storage.sync.set({ notificationSettings }).catch(() => {});
+      // Only sync wishlist if it fits within the 8KB item limit
       const wlStr = JSON.stringify(wishlist);
-      if (wlStr.length < 7500) {
-        chrome.storage.sync.set({ wishlist, notificationSettings });
-      } else {
-        // Store first 50 items to stay within sync limits
-        chrome.storage.sync.set({ wishlist: wishlist.slice(0, 50), notificationSettings });
+      if (wlStr.length < 7000) {
+        chrome.storage.sync.set({ wishlist }).catch(() => {});
       }
-    } catch { /* sync might be unavailable */ }
+    } catch { /* sync unavailable */ }
   }
 }
 
