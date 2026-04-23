@@ -1370,6 +1370,28 @@ function normalizeStoreName(name) {
   return String(name || '').trim().toLowerCase();
 }
 
+function getCanonicalBundleStore(bundle) {
+  const { shopName } = getBundleShopAndTitle(bundle);
+  const context = `${String(shopName || '').toLowerCase()} ${String(bundle?.title || '').toLowerCase()} ${String(bundle?.url || '').toLowerCase()}`;
+
+  if (context.includes('fanatical') || context.includes('bundlefest') || context.includes('build your own')) {
+    return { key: 'fanatical', label: 'Fanatical' };
+  }
+  if (context.includes('humble') || context.includes('humblebundle') || context.includes('humble choice')) {
+    return { key: 'humblebundle', label: 'Humble Bundle' };
+  }
+  if (context.includes('indiegala')) return { key: 'indiegala', label: 'IndieGala' };
+  if (context.includes('greenman') || context.includes('gmg')) return { key: 'greenmangaming', label: 'Green Man Gaming' };
+  if (context.includes('steam') || context.includes('steampowered')) return { key: 'steam', label: 'Steam' };
+  if (context.includes('epic')) return { key: 'epicgames', label: 'Epic Games' };
+  if (context.includes('gog')) return { key: 'gog', label: 'GOG' };
+  if (context.includes('digiphile')) return { key: 'digiphile', label: 'Digiphile' };
+  if (context.includes('cdkeys')) return { key: 'cdkeys', label: 'CDKeys' };
+
+  const fallback = String(shopName || 'Store').trim() || 'Store';
+  return { key: normalizeStoreName(fallback), label: fallback };
+}
+
 function getBundleBestTierPrice(bundle) {
   if (!Array.isArray(bundle?.tiers) || bundle.tiers.length === 0) return Infinity;
   let best = Infinity;
@@ -1439,16 +1461,15 @@ function renderActiveBundles() {
 
   const storeMap = new Map();
   for (const b of bundles) {
-    const { shopName } = getBundleShopAndTitle(b);
-    const key = normalizeStoreName(shopName);
+    const canonical = getCanonicalBundleStore(b);
+    const key = canonical.key;
     if (!key) continue;
-    if (!storeMap.has(key)) storeMap.set(key, shopName);
+    if (!storeMap.has(key)) storeMap.set(key, canonical.label);
   }
 
   const filtered = bundles.filter((b) => {
     if (activeBundlesFilter === 'all') return true;
-    const { shopName } = getBundleShopAndTitle(b);
-    return normalizeStoreName(shopName) === activeBundlesFilter;
+    return getCanonicalBundleStore(b).key === activeBundlesFilter;
   });
 
   const sorted = [...filtered].sort((a, b) => {
@@ -1503,10 +1524,12 @@ function renderActiveBundles() {
       }
 
       const { shopName, bundleTitle } = getBundleShopAndTitle(b);
+      const canonicalStore = getCanonicalBundleStore(b);
+      const displayStoreName = canonicalStore.label;
 
       // Map common store keywords to their actual domains for accurate favicon fetching
       let domain = null;
-      const s = shopName.toLowerCase() + ' ' + (b.url || '').toLowerCase();
+      const s = displayStoreName.toLowerCase() + ' ' + shopName.toLowerCase() + ' ' + (b.url || '').toLowerCase();
       if (s.includes('humble')) domain = 'humblebundle.com';
       else if (s.includes('fanatical')) domain = 'fanatical.com';
       else if (s.includes('indiegala')) domain = 'indiegala.com';
@@ -1520,12 +1543,12 @@ function renderActiveBundles() {
       const storeLogoUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : 'images/icon-128.png';
       const imgSrc = b.image || storeLogoUrl;
       const storeBadgeHtml = domain
-        ? `<div class="active-bundle-store" style="display:flex;align-items:center;gap:4px;"><img src="${storeLogoUrl}" style="width:12px;height:12px;border-radius:2px;">${escapeHtml(shopName)}</div>`
-        : `<div class="active-bundle-store">${escapeHtml(shopName)}</div>`;
+        ? `<div class="active-bundle-store" style="display:flex;align-items:center;gap:4px;"><img src="${storeLogoUrl}" style="width:12px;height:12px;border-radius:2px;">${escapeHtml(displayStoreName)}</div>`
+        : `<div class="active-bundle-store">${escapeHtml(displayStoreName)}</div>`;
 
       h += `<div class="active-bundle-card">
           <div class="active-bundle-body">
-            <img class="active-bundle-img" style="background:#fff; padding:4px;" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(shopName)}">
+            <img class="active-bundle-img" style="background:#fff; padding:4px;" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(displayStoreName)}">
             <div class="active-bundle-content">
               <div class="active-bundle-header"><div class="active-bundle-title" style="margin-right:8px">${escapeHtml(bundleTitle)}</div>${storeBadgeHtml}</div>
               <div class="active-bundle-tiers">`;
@@ -2141,7 +2164,7 @@ function wireSettings() {
   });
 
   document.getElementById('viewChangelogBtn').addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('CHANGELOG.md') });
+    chrome.tabs.create({ url: chrome.runtime.getURL('changelog.html') });
   });
 
   document.getElementById('replayOnboardingBtn').addEventListener('click', () => replayOnboarding());

@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.6.2] - 2026-04-23
+
+### Changed
+
+- **Support link** — Buy Me a Coffee now points to `https://buymeacoffee.com/gg.buddy`.
+
+---
+
+## [2.6.1] - 2026-04-22
+
+### Fixed
+
+- **Bundle Store Normalization** — Active Bundles store filters now correctly group title variants under canonical stores (for example, Fanatical "Build/BundleFest" and Humble variants like "Humble Choice"/promo names all map to the right store).
+- **Changelog Viewer UX** — The Settings changelog action now opens an in-extension viewer page instead of navigating directly to the raw Markdown file.
+
+---
+
 ## [2.6.0] - 2026-04-22
 
 ### Added
@@ -73,6 +90,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Themes (Light/Dark/OLED/System), accent colors, compact mode.
 - Cross-device sync via Chrome storage.
 
+[2.6.2]: https://github.com/ggbuddy/GameDealFinder/compare/v2.6.1...v2.6.2
+[2.6.1]: https://github.com/ggbuddy/GameDealFinder/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/ggbuddy/GameDealFinder/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/ggbuddy/GameDealFinder/compare/v2.3.0...v2.5.0
 [2.3.0]: https://github.com/ggbuddy/GameDealFinder/compare/v2.2.0...v2.3.0
